@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Unnamed Municipality EMS Callout Helper</title>
+<style>
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;display:flex;flex-direction:column;height:100vh;font:15px/1.4 system-ui,"Segoe UI",Arial,sans-serif;color:#1d1d1f;background:#f4f5f7}
+header{display:flex;align-items:center;gap:12px;padding:10px 16px;background:#1f3b5c;color:#fff;flex-wrap:wrap}
+header h1{font-size:19px;margin:0;flex:1}
+header .src{font-size:12px;opacity:.8}
+button{font:inherit;cursor:pointer}
+.top{background:#fff;color:#1f3b5c;border:0;border-radius:6px;padding:6px 12px;font-weight:600}
+#banner{background:#fff3cd;border-bottom:1px solid #e0c36a;padding:8px 16px;font-size:14px}
+#banner button{margin-left:8px}
+#welcome{max-width:640px;margin:60px auto;background:#fff;border:1px solid #d7dbe0;border-radius:10px;padding:24px}
+.filebtn{display:inline-block;cursor:pointer}.filebtn.big{background:#1f3b5c;color:#fff;font-size:16px;padding:10px 16px}
+.entry{display:flex;gap:3px;align-items:center;margin-top:2px;font-size:12px}.entry .span{color:#555;font-size:11px;white-space:nowrap}
+.entry.slot{color:#888;font-style:italic;padding-left:4px}.slotname{flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.entry{flex-wrap:wrap}.trade{flex-basis:100%;font-size:10px;color:#7a4b00;background:#fdecc8;border-radius:3px;padding:0 4px;margin-top:1px}
+table.roles td.tn{white-space:nowrap}table.roles td.hint{white-space:nowrap}
+.lab{font-size:10px;color:#1f3b5c;font-weight:600}.day.outside{opacity:.45}
+.name.ignored{opacity:.5}.why.note{color:#7a4b00}
+.checks{border-color:#e0a800;background:#fffbea}
+.times{display:grid;grid-template-columns:1fr 1fr;gap:6px}.times input{width:100%;font:inherit;padding:3px}
+.gtitle.discretion{color:#8a4b00}
+table.roles td{padding:2px 6px}
+#main{display:flex;flex:1;min-height:0}
+#cal{flex:1;overflow:auto;padding:12px 16px}
+.nav{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.nav h2{margin:0;font-size:20px;min-width:180px;text-align:center}
+.nav button{border:1px solid #b7bec8;background:#fff;border-radius:6px;padding:4px 14px;font-size:18px}
+.legend{margin-left:auto;font-size:12px;display:flex;gap:8px}
+.legend span{padding:2px 6px;border-radius:4px}
+#grid{display:grid;grid-template-columns:repeat(7,minmax(104px,1fr));gap:4px}
+.dow{font-weight:600;text-align:center;font-size:13px;color:#555}
+.day{background:#fff;border:1px solid #d7dbe0;border-radius:6px;padding:4px;min-height:92px}
+.day.empty{background:transparent;border:0}
+.day.holiday{border:2px solid #b8860b;background:#fffbea}
+.dhead{display:flex;justify-content:space-between;align-items:baseline;gap:4px}
+.dnum{font-weight:700}
+.hol{font-size:10px;color:#8a6400;text-align:right}
+.pair{display:flex;gap:3px;margin-top:3px;border-radius:4px;padding:2px}
+.c-Blue{background:#dbe8fb}.c-Green{background:#d9f0dc}.c-Red{background:#f8dcdc}.c-Kelly{background:#dcc6f2}
+.name{flex:1;border:1px solid #d7dbe0;background:#eef3fa;border-radius:4px;padding:2px 4px;font-size:12px;text-align:left;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;min-width:0}
+.name:hover{border-color:#1f3b5c;background:#fff}
+.name.picked{background:#222;color:#fff;font-weight:700;text-decoration:line-through;border-color:#000}
+#side{width:470px;max-width:48vw;overflow:auto;background:#fff;border-left:1px solid #d7dbe0;padding:12px 16px}
+#side h2{margin:0;font-size:20px}
+.sub{color:#555;margin-bottom:8px}
+.hint{color:#444;font-size:13px}.hint.big{font-size:15px}
+.opts{display:grid;gap:6px;margin:8px 0}
+.sel span{display:block;font-size:12px;font-weight:600;color:#444}
+.sel select{width:100%;font:inherit;padding:4px}
+.warn{background:#fff3cd;border-left:4px solid #e0a800;padding:6px 8px;margin:6px 0;font-size:13px}
+.steps{background:#f4f6f9;border-radius:6px;padding:6px 10px;margin:8px 0;font-size:13px}
+.steps summary{cursor:pointer;font-weight:600}
+.steps ol{padding-left:20px;margin:6px 0}
+h3{margin:14px 0 4px;font-size:16px}
+.callhead{color:#1f3b5c;border-bottom:2px solid #1f3b5c}
+.gtitle{font-size:14px;font-weight:700;color:#1f3b5c;margin-top:8px}.gnote{font-size:13px;color:#333}.tickbox{border:1px solid #d7dbe0;border-radius:6px;padding:6px 10px;margin:8px 0}.tickbox summary{cursor:pointer;font-weight:600}
+.calllist,.nolist{margin:4px 0;padding-left:28px}
+.calllist li,.nolist li{margin:4px 0}
+.calllist strong,.nolist strong{font-size:15px}
+.why{display:block;font-size:13px;color:#333}
+.nolist{list-style:none;padding-left:0}
+.nolist li{border-left:4px solid #c62828;padding-left:8px}
+.nohead{color:#b71c1c}
+.nohead.soft{color:#a14d00}
+.nolist.soft li{border-left-color:#ef8f00}
+.none{color:#888;font-style:italic}
+.ticks{border-collapse:collapse;font-size:12px;width:100%}
+.ticks th{font-weight:600;text-align:center;padding:2px;vertical-align:bottom}
+.ticks td{text-align:center;border-top:1px solid #eee;padding:2px}
+.ticks td.tn{text-align:left;font-weight:600}
+#settings{padding:16px;overflow:auto;flex:1}
+#lists{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start}
+.listcol{background:#fff;border:1px solid #d7dbe0;border-radius:8px;padding:10px 14px;flex:1;min-width:340px}.editlist{padding-left:22px}
+.editlist li{display:flex;gap:4px;align-items:center;margin:3px 0}
+.ln{flex:1}
+.small{font-size:12px;padding:2px 8px;border:1px solid #b7bec8;background:#fff;border-radius:4px}
+.small.wide{margin-top:8px}
+.small:disabled{opacity:.35;cursor:default}
+@media (max-width:900px){#main{flex-direction:column;height:auto}#side{width:auto;max-width:none;border-left:0;border-top:1px solid #d7dbe0}}
+@media print{header button,#placeholder button{display:none}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Unnamed Municipality EMS Callout Helper</h1>
+  <span class="src">Schedule: <span id="sourceLabel"></span></span>
+  <label class="top filebtn">Load schedule (.ics)<input type="file" id="fileInput" accept=".ics,text/calendar" hidden></label>
+  <button class="top" id="openSettings" type="button">Roster and lists</button>
+</header>
+<div id="banner" hidden></div>
+<div id="welcome" hidden>
+  <h2>Load this month's schedule</h2>
+  <p>In Aladtec, download the schedule as an iCal (.ics) file, then load it here. You can also drag the file onto this page. Nothing is uploaded anywhere; it stays on this computer.</p>
+  <p><label class="top filebtn big">Choose the .ics file<input type="file" id="fileInput2" accept=".ics,text/calendar" hidden></label>
+  <button class="small" id="loadSample" type="button">Try it with a made-up sample schedule</button></p>
+</div>
+<div id="main">
+  <section id="cal">
+    <div class="nav">
+      <button id="prev" type="button" aria-label="Previous month">&lsaquo;</button>
+      <h2 id="monthTitle"></h2>
+      <button id="next" type="button" aria-label="Next month">&rsaquo;</button>
+      
+    </div>
+    <div id="grid"></div>
+  </section>
+  <aside id="side"><div id="result"></div></aside>
+</div>
+<div id="settings" hidden>
+  <button class="top" id="closeSettings" type="button" style="border:1px solid #1f3b5c">&larr; Back to calendar</button>
+  <p class="hint">Saved in this browser on this computer only. The schedule itself is never edited here: who works when, trades, crews and Kelly days always come from the loaded schedule.</p>
+  <div id="lists"></div>
+  <p><button class="small" id="resetAll" type="button">Erase everything saved on this computer</button></p>
+</div>
+<!--SAMPLE-->
+<script>
+/*ENGINE*/
+</script>
+<script>
+/*APP*/
+</script>
+</body>
+</html>

@@ -1,0 +1,3052 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Unnamed Municipality EMS Callout Helper</title>
+<style>
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;display:flex;flex-direction:column;height:100vh;font:15px/1.4 system-ui,"Segoe UI",Arial,sans-serif;color:#1d1d1f;background:#f4f5f7}
+header{display:flex;align-items:center;gap:12px;padding:10px 16px;background:#1f3b5c;color:#fff;flex-wrap:wrap}
+header h1{font-size:19px;margin:0;flex:1}
+header .src{font-size:12px;opacity:.8}
+button{font:inherit;cursor:pointer}
+.top{background:#fff;color:#1f3b5c;border:0;border-radius:6px;padding:6px 12px;font-weight:600}
+#banner{background:#fff3cd;border-bottom:1px solid #e0c36a;padding:8px 16px;font-size:14px}
+#banner button{margin-left:8px}
+#welcome{max-width:640px;margin:60px auto;background:#fff;border:1px solid #d7dbe0;border-radius:10px;padding:24px}
+.filebtn{display:inline-block;cursor:pointer}.filebtn.big{background:#1f3b5c;color:#fff;font-size:16px;padding:10px 16px}
+.entry{display:flex;gap:3px;align-items:center;margin-top:2px;font-size:12px}.entry .span{color:#555;font-size:11px;white-space:nowrap}
+.entry.slot{color:#888;font-style:italic;padding-left:4px}.slotname{flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.entry{flex-wrap:wrap}.trade{flex-basis:100%;font-size:10px;color:#7a4b00;background:#fdecc8;border-radius:3px;padding:0 4px;margin-top:1px}
+table.roles td.tn{white-space:nowrap}table.roles td.hint{white-space:nowrap}
+.lab{font-size:10px;color:#1f3b5c;font-weight:600}.day.outside{opacity:.45}
+.name.ignored{opacity:.5}.why.note{color:#7a4b00}
+.checks{border-color:#e0a800;background:#fffbea}
+.times{display:grid;grid-template-columns:1fr 1fr;gap:6px}.times input{width:100%;font:inherit;padding:3px}
+.gtitle.discretion{color:#8a4b00}
+table.roles td{padding:2px 6px}
+#main{display:flex;flex:1;min-height:0}
+#cal{flex:1;overflow:auto;padding:12px 16px}
+.nav{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.nav h2{margin:0;font-size:20px;min-width:180px;text-align:center}
+.nav button{border:1px solid #b7bec8;background:#fff;border-radius:6px;padding:4px 14px;font-size:18px}
+.legend{margin-left:auto;font-size:12px;display:flex;gap:8px}
+.legend span{padding:2px 6px;border-radius:4px}
+#grid{display:grid;grid-template-columns:repeat(7,minmax(104px,1fr));gap:4px}
+.dow{font-weight:600;text-align:center;font-size:13px;color:#555}
+.day{background:#fff;border:1px solid #d7dbe0;border-radius:6px;padding:4px;min-height:92px}
+.day.empty{background:transparent;border:0}
+.day.holiday{border:2px solid #b8860b;background:#fffbea}
+.dhead{display:flex;justify-content:space-between;align-items:baseline;gap:4px}
+.dnum{font-weight:700}
+.hol{font-size:10px;color:#8a6400;text-align:right}
+.pair{display:flex;gap:3px;margin-top:3px;border-radius:4px;padding:2px}
+.c-Blue{background:#dbe8fb}.c-Green{background:#d9f0dc}.c-Red{background:#f8dcdc}.c-Kelly{background:#dcc6f2}
+.name{flex:1;border:1px solid #d7dbe0;background:#eef3fa;border-radius:4px;padding:2px 4px;font-size:12px;text-align:left;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;min-width:0}
+.name:hover{border-color:#1f3b5c;background:#fff}
+.name.picked{background:#222;color:#fff;font-weight:700;text-decoration:line-through;border-color:#000}
+#side{width:470px;max-width:48vw;overflow:auto;background:#fff;border-left:1px solid #d7dbe0;padding:12px 16px}
+#side h2{margin:0;font-size:20px}
+.sub{color:#555;margin-bottom:8px}
+.hint{color:#444;font-size:13px}.hint.big{font-size:15px}
+.opts{display:grid;gap:6px;margin:8px 0}
+.sel span{display:block;font-size:12px;font-weight:600;color:#444}
+.sel select{width:100%;font:inherit;padding:4px}
+.warn{background:#fff3cd;border-left:4px solid #e0a800;padding:6px 8px;margin:6px 0;font-size:13px}
+.steps{background:#f4f6f9;border-radius:6px;padding:6px 10px;margin:8px 0;font-size:13px}
+.steps summary{cursor:pointer;font-weight:600}
+.steps ol{padding-left:20px;margin:6px 0}
+h3{margin:14px 0 4px;font-size:16px}
+.callhead{color:#1f3b5c;border-bottom:2px solid #1f3b5c}
+.gtitle{font-size:14px;font-weight:700;color:#1f3b5c;margin-top:8px}.gnote{font-size:13px;color:#333}.tickbox{border:1px solid #d7dbe0;border-radius:6px;padding:6px 10px;margin:8px 0}.tickbox summary{cursor:pointer;font-weight:600}
+.calllist,.nolist{margin:4px 0;padding-left:28px}
+.calllist li,.nolist li{margin:4px 0}
+.calllist strong,.nolist strong{font-size:15px}
+.why{display:block;font-size:13px;color:#333}
+.nolist{list-style:none;padding-left:0}
+.nolist li{border-left:4px solid #c62828;padding-left:8px}
+.nohead{color:#b71c1c}
+.nohead.soft{color:#a14d00}
+.nolist.soft li{border-left-color:#ef8f00}
+.none{color:#888;font-style:italic}
+.ticks{border-collapse:collapse;font-size:12px;width:100%}
+.ticks th{font-weight:600;text-align:center;padding:2px;vertical-align:bottom}
+.ticks td{text-align:center;border-top:1px solid #eee;padding:2px}
+.ticks td.tn{text-align:left;font-weight:600}
+#settings{padding:16px;overflow:auto;flex:1}
+#lists{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start}
+.listcol{background:#fff;border:1px solid #d7dbe0;border-radius:8px;padding:10px 14px;flex:1;min-width:340px}.editlist{padding-left:22px}
+.editlist li{display:flex;gap:4px;align-items:center;margin:3px 0}
+.ln{flex:1}
+.small{font-size:12px;padding:2px 8px;border:1px solid #b7bec8;background:#fff;border-radius:4px}
+.small.wide{margin-top:8px}
+.small:disabled{opacity:.35;cursor:default}
+@media (max-width:900px){#main{flex-direction:column;height:auto}#side{width:auto;max-width:none;border-left:0;border-top:1px solid #d7dbe0}}
+@media print{header button,#placeholder button{display:none}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Unnamed Municipality EMS Callout Helper</h1>
+  <span class="src">Schedule: <span id="sourceLabel"></span></span>
+  <label class="top filebtn">Load schedule (.ics)<input type="file" id="fileInput" accept=".ics,text/calendar" hidden></label>
+  <button class="top" id="openSettings" type="button">Roster and lists</button>
+</header>
+<div id="banner" hidden></div>
+<div id="welcome" hidden>
+  <h2>Load this month's schedule</h2>
+  <p>In Aladtec, download the schedule as an iCal (.ics) file, then load it here. You can also drag the file onto this page. Nothing is uploaded anywhere; it stays on this computer.</p>
+  <p><label class="top filebtn big">Choose the .ics file<input type="file" id="fileInput2" accept=".ics,text/calendar" hidden></label>
+  <button class="small" id="loadSample" type="button">Try it with a made-up sample schedule</button></p>
+</div>
+<div id="main">
+  <section id="cal">
+    <div class="nav">
+      <button id="prev" type="button" aria-label="Previous month">&lsaquo;</button>
+      <h2 id="monthTitle"></h2>
+      <button id="next" type="button" aria-label="Next month">&rsaquo;</button>
+      
+    </div>
+    <div id="grid"></div>
+  </section>
+  <aside id="side"><div id="result"></div></aside>
+</div>
+<div id="settings" hidden>
+  <button class="top" id="closeSettings" type="button" style="border:1px solid #1f3b5c">&larr; Back to calendar</button>
+  <p class="hint">Saved in this browser on this computer only. The schedule itself is never edited here: who works when, trades, crews and Kelly days always come from the loaded schedule.</p>
+  <div id="lists"></div>
+  <p><button class="small" id="resetAll" type="button">Erase everything saved on this computer</button></p>
+</div>
+<script type="text/calendar" id="sample-ics">
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Callout Helper//test conversion of Aladtec print view//EN
+X-WR-CALNAME:Sample EMS schedule (made-up names)
+X-WR-TIMEZONE:America/Chicago
+BEGIN:VEVENT
+UID:wems-1@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;VALUE=DATE:20261001
+DTEND;VALUE=DATE:20261002
+SUMMARY:A Shift
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-2@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261001T080000
+DTEND;TZID=America/Chicago:20261002T080000
+SUMMARY:Iris Novak
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-3@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261001T080000
+DTEND;TZID=America/Chicago:20261002T080000
+SUMMARY:Jonah Price
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-4@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261001T080000
+DTEND;TZID=America/Chicago:20261001T120000
+SUMMARY:Elena Brooks
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-5@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261001T080000
+DTEND;TZID=America/Chicago:20261002T080000
+SUMMARY:Leo Marsh
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-6@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261001T080000
+DTEND;TZID=America/Chicago:20261001T090000
+SUMMARY:Fifth Provider or Student
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-7@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261001T080000
+DTEND;TZID=America/Chicago:20261002T080000
+SUMMARY:Tentative Approval
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-8@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261001T090000
+DTEND;TZID=America/Chicago:20261001T210000
+SUMMARY:Nina Holt
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-9@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261001T120000
+DTEND;TZID=America/Chicago:20261002T080000
+SUMMARY:Carmen Diaz
+DESCRIPTION:Main Schedule\nTrade: For Kira Lund
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-10@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261001T210000
+DTEND;TZID=America/Chicago:20261002T080000
+SUMMARY:Fifth Provider or Student
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-11@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;VALUE=DATE:20261002
+DTEND;VALUE=DATE:20261003
+SUMMARY:A Shift
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-12@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261002T080000
+DTEND;TZID=America/Chicago:20261003T080000
+SUMMARY:Iris Novak
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-13@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261002T080000
+DTEND;TZID=America/Chicago:20261003T080000
+SUMMARY:Jonah Price
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-14@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261002T080000
+DTEND;TZID=America/Chicago:20261003T080000
+SUMMARY:Priya Shah
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-15@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261002T080000
+DTEND;TZID=America/Chicago:20261002T200000
+SUMMARY:Maya Ortiz
+DESCRIPTION:Main Schedule\nTrade: For Leo Marsh
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-16@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261002T080000
+DTEND;TZID=America/Chicago:20261002T200000
+SUMMARY:Ride Along / Student
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-17@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261002T080000
+DTEND;TZID=America/Chicago:20261003T080000
+SUMMARY:Tentative Approval
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-18@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261002T200000
+DTEND;TZID=America/Chicago:20261003T080000
+SUMMARY:Dmitri Volkov
+DESCRIPTION:Main Schedule\nTrade: For Maya Ortiz
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-19@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261002T200000
+DTEND;TZID=America/Chicago:20261003T080000
+SUMMARY:Fifth Provider or Student
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-20@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261002T080000
+DTEND;TZID=America/Chicago:20261002T200000
+SUMMARY:College class
+DESCRIPTION:Events
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-21@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261002T183000
+DTEND;TZID=America/Chicago:20261002T210000
+SUMMARY:High School event
+DESCRIPTION:Events
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-22@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;VALUE=DATE:20261003
+DTEND;VALUE=DATE:20261004
+SUMMARY:B Shift
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-23@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261003T080000
+DTEND;TZID=America/Chicago:20261003T200000
+SUMMARY:Maya Ortiz
+DESCRIPTION:Main Schedule\nTrade: For Dmitri Volkov
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-24@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261003T080000
+DTEND;TZID=America/Chicago:20261004T080000
+SUMMARY:Iris Novak
+DESCRIPTION:Main Schedule\nTrade: For Alice Hart
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-25@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261003T080000
+DTEND;TZID=America/Chicago:20261003T200000
+SUMMARY:Priya Shah
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-26@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261003T080000
+DTEND;TZID=America/Chicago:20261004T080000
+SUMMARY:Ruth Ames
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-27@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261003T080000
+DTEND;TZID=America/Chicago:20261004T080000
+SUMMARY:Fifth Provider or Student
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-28@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261003T080000
+DTEND;TZID=America/Chicago:20261004T080000
+SUMMARY:Tentative Approval
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-29@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261003T200000
+DTEND;TZID=America/Chicago:20261004T080000
+SUMMARY:Carmen Diaz
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-30@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261003T200000
+DTEND;TZID=America/Chicago:20261004T080000
+SUMMARY:Maya Ortiz
+DESCRIPTION:Main Schedule\nTrade: For Dmitri Volkov
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-31@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;VALUE=DATE:20261004
+DTEND;VALUE=DATE:20261005
+SUMMARY:B Shift
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-32@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261004T080000
+DTEND;TZID=America/Chicago:20261005T080000
+SUMMARY:Maya Ortiz
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-33@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261004T080000
+DTEND;TZID=America/Chicago:20261004T200000
+SUMMARY:Sam Lee
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-34@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261004T080000
+DTEND;TZID=America/Chicago:20261005T080000
+SUMMARY:Dmitri Volkov
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-35@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261004T080000
+DTEND;TZID=America/Chicago:20261005T080000
+SUMMARY:Carmen Diaz
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-36@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261004T080000
+DTEND;TZID=America/Chicago:20261005T080000
+SUMMARY:Fifth Provider or Student
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-37@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261004T080000
+DTEND;TZID=America/Chicago:20261005T080000
+SUMMARY:Tentative Approval
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-38@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261004T200000
+DTEND;TZID=America/Chicago:20261005T080000
+SUMMARY:Jonah Price
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-39@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;VALUE=DATE:20261005
+DTEND;VALUE=DATE:20261006
+SUMMARY:C Shift
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-40@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261005T080000
+DTEND;TZID=America/Chicago:20261006T080000
+SUMMARY:Carmen Diaz
+DESCRIPTION:Main Schedule\nTrade: For Maya Ortiz
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-41@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261005T080000
+DTEND;TZID=America/Chicago:20261005T200000
+SUMMARY:Gwen Fairley
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-42@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261005T080000
+DTEND;TZID=America/Chicago:20261006T080000
+SUMMARY:Elena Brooks
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-43@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261005T080000
+DTEND;TZID=America/Chicago:20261006T080000
+SUMMARY:Felix Moreau
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-44@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261005T080000
+DTEND;TZID=America/Chicago:20261006T080000
+SUMMARY:Fifth Provider or Student
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-45@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261005T080000
+DTEND;TZID=America/Chicago:20261006T080000
+SUMMARY:Tentative Approval
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-46@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261005T200000
+DTEND;TZID=America/Chicago:20261006T080000
+SUMMARY:Leo Marsh
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-47@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261005T080000
+DTEND;TZID=America/Chicago:20261005T100000
+SUMMARY:Timesheet
+DESCRIPTION:Events
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-48@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;VALUE=DATE:20261006
+DTEND;VALUE=DATE:20261007
+SUMMARY:C Shift
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-49@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261006T080000
+DTEND;TZID=America/Chicago:20261006T110000
+SUMMARY:M24 - Medic
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-50@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261006T080000
+DTEND;TZID=America/Chicago:20261007T080000
+SUMMARY:Hassan Reed
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-51@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261006T080000
+DTEND;TZID=America/Chicago:20261007T080000
+SUMMARY:Elena Brooks
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-52@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261006T080000
+DTEND;TZID=America/Chicago:20261007T080000
+SUMMARY:Felix Moreau
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-53@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261006T080000
+DTEND;TZID=America/Chicago:20261007T080000
+SUMMARY:Fifth Provider or Student
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-54@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261006T080000
+DTEND;TZID=America/Chicago:20261007T080000
+SUMMARY:Tentative Approval
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-55@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261006T110000
+DTEND;TZID=America/Chicago:20261006T200000
+SUMMARY:Vic Haas
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-56@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261006T200000
+DTEND;TZID=America/Chicago:20261007T080000
+SUMMARY:Gwen Fairley
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-57@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;VALUE=DATE:20261007
+DTEND;VALUE=DATE:20261008
+SUMMARY:A Shift
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-58@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261007T080000
+DTEND;TZID=America/Chicago:20261007T090000
+SUMMARY:Gwen Fairley
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-59@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261007T080000
+DTEND;TZID=America/Chicago:20261008T080000
+SUMMARY:Jonah Price
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-60@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261007T080000
+DTEND;TZID=America/Chicago:20261008T080000
+SUMMARY:Kira Lund
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-61@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261007T080000
+DTEND;TZID=America/Chicago:20261008T080000
+SUMMARY:Leo Marsh
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-62@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261007T080000
+DTEND;TZID=America/Chicago:20261007T200000
+SUMMARY:Rosa Vega
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-63@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261007T080000
+DTEND;TZID=America/Chicago:20261008T080000
+SUMMARY:Tentative Approval
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-64@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261007T090000
+DTEND;TZID=America/Chicago:20261007T130000
+SUMMARY:Maya Ortiz
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-65@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261007T130000
+DTEND;TZID=America/Chicago:20261008T080000
+SUMMARY:Iris Novak
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-66@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261007T200000
+DTEND;TZID=America/Chicago:20261008T080000
+SUMMARY:Fifth Provider or Student
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-67@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261007T080000
+DTEND;TZID=America/Chicago:20261007T200000
+SUMMARY:Part Time Par
+DESCRIPTION:Events
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-68@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;VALUE=DATE:20261008
+DTEND;VALUE=DATE:20261009
+SUMMARY:A Shift
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-69@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261008T080000
+DTEND;TZID=America/Chicago:20261009T070000
+SUMMARY:Iris Novak
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-70@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261008T080000
+DTEND;TZID=America/Chicago:20261009T080000
+SUMMARY:Jonah Price
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-71@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261008T080000
+DTEND;TZID=America/Chicago:20261008T200000
+SUMMARY:Dmitri Volkov
+DESCRIPTION:Main Schedule\nTrade: For Kira Lund
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-72@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261008T080000
+DTEND;TZID=America/Chicago:20261009T080000
+SUMMARY:Leo Marsh
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-73@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261008T080000
+DTEND;TZID=America/Chicago:20261009T080000
+SUMMARY:Fifth Provider or Student
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-74@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261008T080000
+DTEND;TZID=America/Chicago:20261009T080000
+SUMMARY:Tentative Approval
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-75@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261008T200000
+DTEND;TZID=America/Chicago:20261009T080000
+SUMMARY:Kira Lund
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-76@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261009T070000
+DTEND;TZID=America/Chicago:20261009T080000
+SUMMARY:Carmen Diaz
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-77@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;VALUE=DATE:20261009
+DTEND;VALUE=DATE:20261010
+SUMMARY:B Shift
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-78@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261009T080000
+DTEND;TZID=America/Chicago:20261010T080000
+SUMMARY:Carmen Diaz
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-79@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261009T080000
+DTEND;TZID=America/Chicago:20261010T080000
+SUMMARY:Jonah Price
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-80@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261009T080000
+DTEND;TZID=America/Chicago:20261009T200000
+SUMMARY:Dmitri Volkov
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-81@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261009T080000
+DTEND;TZID=America/Chicago:20261010T080000
+SUMMARY:Bruno Keller
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-82@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261009T080000
+DTEND;TZID=America/Chicago:20261010T080000
+SUMMARY:Fifth Provider or Student
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-83@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261009T080000
+DTEND;TZID=America/Chicago:20261010T080000
+SUMMARY:Tentative Approval
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-84@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261009T200000
+DTEND;TZID=America/Chicago:20261010T080000
+SUMMARY:Kira Lund
+DESCRIPTION:Main Schedule\nTrade: For Dmitri Volkov
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-85@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261009T183000
+DTEND;TZID=America/Chicago:20261009T210000
+SUMMARY:High School event
+DESCRIPTION:Events
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-86@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;VALUE=DATE:20261010
+DTEND;VALUE=DATE:20261011
+SUMMARY:B Shift
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-87@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261010T080000
+DTEND;TZID=America/Chicago:20261011T080000
+SUMMARY:Carmen Diaz
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-88@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261010T080000
+DTEND;TZID=America/Chicago:20261011T080000
+SUMMARY:Maya Ortiz
+DESCRIPTION:Main Schedule\nTrade: For Alice Hart
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-89@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261010T080000
+DTEND;TZID=America/Chicago:20261011T080000
+SUMMARY:Sam Lee
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-90@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261010T080000
+DTEND;TZID=America/Chicago:20261011T080000
+SUMMARY:Bruno Keller
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-91@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261010T080000
+DTEND;TZID=America/Chicago:20261011T080000
+SUMMARY:Fifth Provider or Student
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-92@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261010T080000
+DTEND;TZID=America/Chicago:20261011T080000
+SUMMARY:Tentative Approval
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-93@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;VALUE=DATE:20261011
+DTEND;VALUE=DATE:20261012
+SUMMARY:C Shift
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-94@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261011T080000
+DTEND;TZID=America/Chicago:20261012T080000
+SUMMARY:Gwen Fairley
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-95@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261011T080000
+DTEND;TZID=America/Chicago:20261012T080000
+SUMMARY:Hassan Reed
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-96@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261011T080000
+DTEND;TZID=America/Chicago:20261012T080000
+SUMMARY:Maya Ortiz
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-97@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261011T080000
+DTEND;TZID=America/Chicago:20261011T200000
+SUMMARY:Kira Lund
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-98@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261011T080000
+DTEND;TZID=America/Chicago:20261012T080000
+SUMMARY:Fifth Provider or Student
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-99@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261011T080000
+DTEND;TZID=America/Chicago:20261012T080000
+SUMMARY:Tentative Approval
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-100@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261011T200000
+DTEND;TZID=America/Chicago:20261012T080000
+SUMMARY:Dmitri Volkov
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-101@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;VALUE=DATE:20261012
+DTEND;VALUE=DATE:20261013
+SUMMARY:C Shift
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-102@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261012T080000
+DTEND;TZID=America/Chicago:20261013T080000
+SUMMARY:Nina Holt
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-103@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261012T080000
+DTEND;TZID=America/Chicago:20261013T080000
+SUMMARY:Iris Novak
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-104@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261012T080000
+DTEND;TZID=America/Chicago:20261013T080000
+SUMMARY:Elena Brooks
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-105@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261012T080000
+DTEND;TZID=America/Chicago:20261013T080000
+SUMMARY:Vic Haas
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-106@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261012T080000
+DTEND;TZID=America/Chicago:20261013T080000
+SUMMARY:Fifth Provider or Student
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-107@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261012T080000
+DTEND;TZID=America/Chicago:20261013T080000
+SUMMARY:Tentative Approval
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-108@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;VALUE=DATE:20261013
+DTEND;VALUE=DATE:20261014
+SUMMARY:A Shift
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-109@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261013T080000
+DTEND;TZID=America/Chicago:20261014T080000
+SUMMARY:Iris Novak
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-110@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261013T080000
+DTEND;TZID=America/Chicago:20261013T130000
+SUMMARY:Bruno Keller
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-111@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261013T080000
+DTEND;TZID=America/Chicago:20261013T180000
+SUMMARY:M22 - Medic
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-112@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261013T080000
+DTEND;TZID=America/Chicago:20261014T080000
+SUMMARY:Leo Marsh
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-113@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261013T080000
+DTEND;TZID=America/Chicago:20261013T200000
+SUMMARY:Yara Dunn
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-114@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261013T080000
+DTEND;TZID=America/Chicago:20261014T080000
+SUMMARY:Tentative Approval
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-115@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261013T130000
+DTEND;TZID=America/Chicago:20261014T080000
+SUMMARY:Dmitri Volkov
+DESCRIPTION:Main Schedule\nTrade: For Jonah Price
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-116@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261013T180000
+DTEND;TZID=America/Chicago:20261014T080000
+SUMMARY:Kira Lund
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-117@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261013T200000
+DTEND;TZID=America/Chicago:20261014T080000
+SUMMARY:Fifth Provider or Student
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-118@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;VALUE=DATE:20261014
+DTEND;VALUE=DATE:20261015
+SUMMARY:A Shift
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-119@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261014T080000
+DTEND;TZID=America/Chicago:20261015T080000
+SUMMARY:Iris Novak
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-120@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261014T080000
+DTEND;TZID=America/Chicago:20261015T080000
+SUMMARY:Jonah Price
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-121@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261014T080000
+DTEND;TZID=America/Chicago:20261015T080000
+SUMMARY:Kira Lund
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-122@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261014T080000
+DTEND;TZID=America/Chicago:20261015T080000
+SUMMARY:Leo Marsh
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-123@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261014T080000
+DTEND;TZID=America/Chicago:20261014T090000
+SUMMARY:Fifth Provider or Student
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-124@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261014T080000
+DTEND;TZID=America/Chicago:20261015T080000
+SUMMARY:Tentative Approval
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-125@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261014T090000
+DTEND;TZID=America/Chicago:20261014T210000
+SUMMARY:Tom Okafor
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-126@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261014T210000
+DTEND;TZID=America/Chicago:20261015T080000
+SUMMARY:Fifth Provider or Student
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-127@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261014T090000
+DTEND;TZID=America/Chicago:20261014T210000
+SUMMARY:Part Time Par
+DESCRIPTION:Events
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-128@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;VALUE=DATE:20261015
+DTEND;VALUE=DATE:20261016
+SUMMARY:B Shift
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-129@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261015T080000
+DTEND;TZID=America/Chicago:20261016T080000
+SUMMARY:Kira Lund
+DESCRIPTION:Main Schedule\nTrade: For Carmen Diaz
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-130@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261015T080000
+DTEND;TZID=America/Chicago:20261016T080000
+SUMMARY:Alice Hart
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-131@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261015T080000
+DTEND;TZID=America/Chicago:20261016T080000
+SUMMARY:Dmitri Volkov
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-132@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261015T080000
+DTEND;TZID=America/Chicago:20261016T080000
+SUMMARY:Bruno Keller
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-133@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261015T080000
+DTEND;TZID=America/Chicago:20261016T080000
+SUMMARY:Fifth Provider or Student
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-134@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261015T080000
+DTEND;TZID=America/Chicago:20261016T080000
+SUMMARY:Tentative Approval
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-135@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;VALUE=DATE:20261016
+DTEND;VALUE=DATE:20261017
+SUMMARY:B Shift
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-136@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261016T080000
+DTEND;TZID=America/Chicago:20261017T080000
+SUMMARY:Maya Ortiz
+DESCRIPTION:Main Schedule\nTrade: For Carmen Diaz
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-137@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261016T080000
+DTEND;TZID=America/Chicago:20261017T080000
+SUMMARY:Alice Hart
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-138@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261016T080000
+DTEND;TZID=America/Chicago:20261017T080000
+SUMMARY:Jonah Price
+DESCRIPTION:Main Schedule\nTrade: For Dmitri Volkov
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-139@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261016T080000
+DTEND;TZID=America/Chicago:20261017T080000
+SUMMARY:Bruno Keller
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-140@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261016T080000
+DTEND;TZID=America/Chicago:20261016T200000
+SUMMARY:Theo Clark
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-141@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261016T080000
+DTEND;TZID=America/Chicago:20261017T080000
+SUMMARY:Tentative Approval
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-142@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261016T200000
+DTEND;TZID=America/Chicago:20261017T080000
+SUMMARY:Fifth Provider or Student
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-143@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;VALUE=DATE:20261017
+DTEND;VALUE=DATE:20261018
+SUMMARY:C Shift
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-144@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261017T080000
+DTEND;TZID=America/Chicago:20261018T080000
+SUMMARY:Gwen Fairley
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-145@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261017T080000
+DTEND;TZID=America/Chicago:20261018T080000
+SUMMARY:Maya Ortiz
+DESCRIPTION:Main Schedule\nTrade: For Hassan Reed
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-146@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261017T080000
+DTEND;TZID=America/Chicago:20261018T080000
+SUMMARY:Elena Brooks
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-147@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261017T080000
+DTEND;TZID=America/Chicago:20261018T080000
+SUMMARY:Felix Moreau
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-148@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261017T080000
+DTEND;TZID=America/Chicago:20261017T090000
+SUMMARY:Fifth Provider or Student
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-149@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261017T080000
+DTEND;TZID=America/Chicago:20261018T080000
+SUMMARY:Tentative Approval
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-150@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261017T090000
+DTEND;TZID=America/Chicago:20261017T200000
+SUMMARY:Ride Along / Student
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-151@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261017T200000
+DTEND;TZID=America/Chicago:20261018T080000
+SUMMARY:Fifth Provider or Student
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-152@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261017T083000
+DTEND;TZID=America/Chicago:20261017T200000
+SUMMARY:Hospital training
+DESCRIPTION:Events
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-153@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;VALUE=DATE:20261018
+DTEND;VALUE=DATE:20261019
+SUMMARY:C Shift
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-154@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261018T080000
+DTEND;TZID=America/Chicago:20261019T080000
+SUMMARY:Gwen Fairley
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-155@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261018T080000
+DTEND;TZID=America/Chicago:20261019T080000
+SUMMARY:Hassan Reed
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-156@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261018T080000
+DTEND;TZID=America/Chicago:20261019T080000
+SUMMARY:Maya Ortiz
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-157@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261018T080000
+DTEND;TZID=America/Chicago:20261019T080000
+SUMMARY:Dmitri Volkov
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-158@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261018T080000
+DTEND;TZID=America/Chicago:20261019T080000
+SUMMARY:Fifth Provider or Student
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-159@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261018T080000
+DTEND;TZID=America/Chicago:20261019T080000
+SUMMARY:Tentative Approval
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-160@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;VALUE=DATE:20261019
+DTEND;VALUE=DATE:20261020
+SUMMARY:A Shift
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-161@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261019T080000
+DTEND;TZID=America/Chicago:20261020T080000
+SUMMARY:Iris Novak
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-162@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261019T080000
+DTEND;TZID=America/Chicago:20261020T080000
+SUMMARY:Jonah Price
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-163@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261019T080000
+DTEND;TZID=America/Chicago:20261020T080000
+SUMMARY:Hassan Reed
+DESCRIPTION:Main Schedule\nTrade: For Maya Ortiz
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-164@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261019T080000
+DTEND;TZID=America/Chicago:20261019T120000
+SUMMARY:Dmitri Volkov
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-165@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261019T080000
+DTEND;TZID=America/Chicago:20261020T080000
+SUMMARY:Ride Along / Student
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-166@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261019T080000
+DTEND;TZID=America/Chicago:20261020T080000
+SUMMARY:Tentative Approval
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-167@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261019T120000
+DTEND;TZID=America/Chicago:20261020T080000
+SUMMARY:Felix Moreau
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-168@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261019T080000
+DTEND;TZID=America/Chicago:20261019T100000
+SUMMARY:Timesheet
+DESCRIPTION:Events
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-169@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261019T080000
+DTEND;TZID=America/Chicago:20261020T000000
+SUMMARY:College class
+DESCRIPTION:Events
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-170@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;VALUE=DATE:20261020
+DTEND;VALUE=DATE:20261021
+SUMMARY:A Shift
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-171@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261020T080000
+DTEND;TZID=America/Chicago:20261021T080000
+SUMMARY:Iris Novak
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-172@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261020T080000
+DTEND;TZID=America/Chicago:20261021T080000
+SUMMARY:Jonah Price
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-173@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261020T080000
+DTEND;TZID=America/Chicago:20261021T080000
+SUMMARY:Kira Lund
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-174@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261020T080000
+DTEND;TZID=America/Chicago:20261021T080000
+SUMMARY:Leo Marsh
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-175@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261020T080000
+DTEND;TZID=America/Chicago:20261020T200000
+SUMMARY:Rosa Vega
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-176@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261020T080000
+DTEND;TZID=America/Chicago:20261021T080000
+SUMMARY:Tentative Approval
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-177@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261020T200000
+DTEND;TZID=America/Chicago:20261021T080000
+SUMMARY:Fifth Provider or Student
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-178@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261020T000000
+DTEND;TZID=America/Chicago:20261020T080000
+SUMMARY:College class
+DESCRIPTION:Events
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-179@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;VALUE=DATE:20261021
+DTEND;VALUE=DATE:20261022
+SUMMARY:B Shift
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-180@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261021T080000
+DTEND;TZID=America/Chicago:20261022T080000
+SUMMARY:Carmen Diaz
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-181@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261021T080000
+DTEND;TZID=America/Chicago:20261022T080000
+SUMMARY:Alice Hart
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-182@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261021T080000
+DTEND;TZID=America/Chicago:20261022T080000
+SUMMARY:Dmitri Volkov
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-183@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261021T080000
+DTEND;TZID=America/Chicago:20261022T080000
+SUMMARY:Bruno Keller
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-184@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261021T080000
+DTEND;TZID=America/Chicago:20261021T200000
+SUMMARY:Ride Along / Student
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-185@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261021T080000
+DTEND;TZID=America/Chicago:20261022T080000
+SUMMARY:Tentative Approval
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-186@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261021T200000
+DTEND;TZID=America/Chicago:20261022T080000
+SUMMARY:Fifth Provider or Student
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-187@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261021T080000
+DTEND;TZID=America/Chicago:20261021T200000
+SUMMARY:College class
+DESCRIPTION:Events
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-188@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;VALUE=DATE:20261022
+DTEND;VALUE=DATE:20261023
+SUMMARY:B Shift
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-189@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261022T080000
+DTEND;TZID=America/Chicago:20261022T200000
+SUMMARY:Sam Lee
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-190@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261022T080000
+DTEND;TZID=America/Chicago:20261023T080000
+SUMMARY:Alice Hart
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-191@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261022T080000
+DTEND;TZID=America/Chicago:20261023T060000
+SUMMARY:Dmitri Volkov
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-192@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261022T080000
+DTEND;TZID=America/Chicago:20261023T080000
+SUMMARY:Bruno Keller
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-193@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261022T080000
+DTEND;TZID=America/Chicago:20261023T080000
+SUMMARY:Fifth Provider or Student
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-194@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261022T080000
+DTEND;TZID=America/Chicago:20261023T080000
+SUMMARY:Tentative Approval
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-195@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261022T200000
+DTEND;TZID=America/Chicago:20261023T080000
+SUMMARY:Carmen Diaz
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-196@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261023T060000
+DTEND;TZID=America/Chicago:20261023T080000
+SUMMARY:Hassan Reed
+DESCRIPTION:Main Schedule\nTrade: For Dmitri Volkov
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-197@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;VALUE=DATE:20261023
+DTEND;VALUE=DATE:20261024
+SUMMARY:C Shift
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-198@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261023T080000
+DTEND;TZID=America/Chicago:20261024T080000
+SUMMARY:Vic Haas
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-199@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261023T080000
+DTEND;TZID=America/Chicago:20261024T080000
+SUMMARY:Hassan Reed
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-200@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261023T080000
+DTEND;TZID=America/Chicago:20261024T080000
+SUMMARY:Elena Brooks
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-201@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261023T080000
+DTEND;TZID=America/Chicago:20261024T080000
+SUMMARY:Felix Moreau
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-202@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261023T080000
+DTEND;TZID=America/Chicago:20261024T080000
+SUMMARY:Fifth Provider or Student
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-203@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261023T080000
+DTEND;TZID=America/Chicago:20261024T080000
+SUMMARY:Tentative Approval
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-204@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;VALUE=DATE:20261024
+DTEND;VALUE=DATE:20261025
+SUMMARY:C Shift
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-205@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261024T080000
+DTEND;TZID=America/Chicago:20261025T080000
+SUMMARY:Priya Shah
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-206@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261024T080000
+DTEND;TZID=America/Chicago:20261025T080000
+SUMMARY:Hassan Reed
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-207@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261024T080000
+DTEND;TZID=America/Chicago:20261025T080000
+SUMMARY:Elena Brooks
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-208@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261024T080000
+DTEND;TZID=America/Chicago:20261025T080000
+SUMMARY:Felix Moreau
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-209@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261024T080000
+DTEND;TZID=America/Chicago:20261025T080000
+SUMMARY:Fifth Provider or Student
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-210@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261024T080000
+DTEND;TZID=America/Chicago:20261025T080000
+SUMMARY:Tentative Approval
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-211@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;VALUE=DATE:20261025
+DTEND;VALUE=DATE:20261026
+SUMMARY:A Shift
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-212@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261025T080000
+DTEND;TZID=America/Chicago:20261025T200000
+SUMMARY:Maya Ortiz
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-213@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261025T080000
+DTEND;TZID=America/Chicago:20261026T080000
+SUMMARY:Bruno Keller
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-214@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261025T080000
+DTEND;TZID=America/Chicago:20261026T080000
+SUMMARY:Carmen Diaz
+DESCRIPTION:Main Schedule\nTrade: For Kira Lund
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-215@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261025T080000
+DTEND;TZID=America/Chicago:20261026T080000
+SUMMARY:Leo Marsh
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-216@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261025T080000
+DTEND;TZID=America/Chicago:20261026T080000
+SUMMARY:Fifth Provider or Student
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-217@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261025T080000
+DTEND;TZID=America/Chicago:20261026T080000
+SUMMARY:Tentative Approval
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-218@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261025T200000
+DTEND;TZID=America/Chicago:20261026T080000
+SUMMARY:Iris Novak
+DESCRIPTION:Main Schedule\nTrade: For Maya Ortiz
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-219@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;VALUE=DATE:20261026
+DTEND;VALUE=DATE:20261027
+SUMMARY:A Shift
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-220@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261026T080000
+DTEND;TZID=America/Chicago:20261027T080000
+SUMMARY:Iris Novak
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-221@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261026T080000
+DTEND;TZID=America/Chicago:20261027T080000
+SUMMARY:Dmitri Volkov
+DESCRIPTION:Main Schedule\nTrade: For Jonah Price
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-222@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261026T080000
+DTEND;TZID=America/Chicago:20261027T080000
+SUMMARY:Carmen Diaz
+DESCRIPTION:Main Schedule\nTrade: For Maya Ortiz
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-223@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261026T080000
+DTEND;TZID=America/Chicago:20261027T080000
+SUMMARY:Jonah Price
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-224@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261026T080000
+DTEND;TZID=America/Chicago:20261027T080000
+SUMMARY:Fifth Provider or Student
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-225@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261026T080000
+DTEND;TZID=America/Chicago:20261027T080000
+SUMMARY:Tentative Approval
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-226@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;VALUE=DATE:20261027
+DTEND;VALUE=DATE:20261028
+SUMMARY:B Shift
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-227@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261027T080000
+DTEND;TZID=America/Chicago:20261028T080000
+SUMMARY:Felix Moreau
+DESCRIPTION:Main Schedule\nTrade: For Carmen Diaz
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-228@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261027T080000
+DTEND;TZID=America/Chicago:20261028T080000
+SUMMARY:Alice Hart
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-229@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261027T080000
+DTEND;TZID=America/Chicago:20261028T080000
+SUMMARY:Dmitri Volkov
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-230@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261027T080000
+DTEND;TZID=America/Chicago:20261028T080000
+SUMMARY:Bruno Keller
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-231@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261027T080000
+DTEND;TZID=America/Chicago:20261027T090000
+SUMMARY:Fifth Provider or Student
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-232@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261027T080000
+DTEND;TZID=America/Chicago:20261028T080000
+SUMMARY:Tentative Approval
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-233@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261027T090000
+DTEND;TZID=America/Chicago:20261027T200000
+SUMMARY:Ride Along / Student
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-234@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261027T200000
+DTEND;TZID=America/Chicago:20261028T080000
+SUMMARY:Fifth Provider or Student
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-235@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261027T083000
+DTEND;TZID=America/Chicago:20261027T203000
+SUMMARY:Hospital training
+DESCRIPTION:Events
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-236@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;VALUE=DATE:20261028
+DTEND;VALUE=DATE:20261029
+SUMMARY:B Shift
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-237@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261028T080000
+DTEND;TZID=America/Chicago:20261029T080000
+SUMMARY:Maya Ortiz
+DESCRIPTION:Main Schedule\nTrade: For Carmen Diaz
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-238@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261028T080000
+DTEND;TZID=America/Chicago:20261029T080000
+SUMMARY:Alice Hart
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-239@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261028T080000
+DTEND;TZID=America/Chicago:20261029T080000
+SUMMARY:Dmitri Volkov
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-240@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261028T080000
+DTEND;TZID=America/Chicago:20261029T080000
+SUMMARY:Bruno Keller
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-241@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261028T080000
+DTEND;TZID=America/Chicago:20261028T200000
+SUMMARY:Theo Clark
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-242@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261028T080000
+DTEND;TZID=America/Chicago:20261029T080000
+SUMMARY:Tentative Approval
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-243@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261028T200000
+DTEND;TZID=America/Chicago:20261029T080000
+SUMMARY:Fifth Provider or Student
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-244@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;VALUE=DATE:20261029
+DTEND;VALUE=DATE:20261030
+SUMMARY:C Shift
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-245@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261029T080000
+DTEND;TZID=America/Chicago:20261030T080000
+SUMMARY:Vic Haas
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-246@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261029T080000
+DTEND;TZID=America/Chicago:20261030T080000
+SUMMARY:Hassan Reed
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-247@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261029T080000
+DTEND;TZID=America/Chicago:20261030T080000
+SUMMARY:Elena Brooks
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-248@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261029T080000
+DTEND;TZID=America/Chicago:20261030T080000
+SUMMARY:Carmen Diaz
+DESCRIPTION:Main Schedule\nTrade: For Felix Moreau
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-249@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261029T080000
+DTEND;TZID=America/Chicago:20261029T200000
+SUMMARY:Rosa Vega
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-250@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261029T080000
+DTEND;TZID=America/Chicago:20261030T080000
+SUMMARY:Tentative Approval
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-251@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261029T200000
+DTEND;TZID=America/Chicago:20261030T080000
+SUMMARY:Fifth Provider or Student
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-252@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;VALUE=DATE:20261030
+DTEND;VALUE=DATE:20261031
+SUMMARY:C Shift
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-253@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261030T080000
+DTEND;TZID=America/Chicago:20261031T080000
+SUMMARY:Iris Novak
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-254@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261030T080000
+DTEND;TZID=America/Chicago:20261031T080000
+SUMMARY:Hassan Reed
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-255@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261030T080000
+DTEND;TZID=America/Chicago:20261031T080000
+SUMMARY:Elena Brooks
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-256@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261030T080000
+DTEND;TZID=America/Chicago:20261031T080000
+SUMMARY:Maya Ortiz
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-257@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261030T080000
+DTEND;TZID=America/Chicago:20261030T200000
+SUMMARY:Tom Okafor
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-258@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261030T080000
+DTEND;TZID=America/Chicago:20261031T080000
+SUMMARY:Dmitri Volkov
+DESCRIPTION:Main Schedule\nTrade: For Felix Moreau
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-259@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261030T200000
+DTEND;TZID=America/Chicago:20261031T080000
+SUMMARY:Fifth Provider or Student
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-260@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261030T080000
+DTEND;TZID=America/Chicago:20261030T200000
+SUMMARY:Part Time Par
+DESCRIPTION:Events
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-261@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;VALUE=DATE:20261031
+DTEND;VALUE=DATE:20261101
+SUMMARY:A Shift
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-262@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261031T080000
+DTEND;TZID=America/Chicago:20261101T080000
+SUMMARY:Iris Novak
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-263@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261031T080000
+DTEND;TZID=America/Chicago:20261101T080000
+SUMMARY:Jonah Price
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-264@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261031T080000
+DTEND;TZID=America/Chicago:20261101T080000
+SUMMARY:Carmen Diaz
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-265@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261031T080000
+DTEND;TZID=America/Chicago:20261101T080000
+SUMMARY:Maya Ortiz
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-266@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261031T080000
+DTEND;TZID=America/Chicago:20261101T080000
+SUMMARY:Fifth Provider or Student
+DESCRIPTION:Main Schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:wems-267@example.invalid
+DTSTAMP:20261012T220000Z
+DTSTART;TZID=America/Chicago:20261031T080000
+DTEND;TZID=America/Chicago:20261101T080000
+SUMMARY:Tentative Approval
+DESCRIPTION:Main Schedule
+END:VEVENT
+END:VCALENDAR
+
+</script>
+<script>
+/* Unnamed Municipality EMS callout engine.
+   Pure logic, no page code. Rules and their sources are in RULES.md.
+   The schedule comes from an iCal (.ics) file, such as Aladtec's calendar feed.
+   Times are kept as "wall clock minutes": the local date and time written in the
+   feed, counted as minutes, so daylight saving never moves a shift. */
+(function (root) {
+  'use strict';
+  var MIN = 60000, HOUR = 60, DAY = 1440, SHIFT_START = 8 * HOUR; // shift days run 08:00 to 08:00 (CBA 7.3)
+
+  // ---------- Time helpers ----------
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function wall(y, mo, d, h, mi) { return Date.UTC(y, mo - 1, d, h || 0, mi || 0) / MIN; }
+  function isoOf(t) { return new Date(t * MIN).toISOString().slice(0, 10); }
+  function isoToWall(iso) { var p = iso.split('-'); return wall(+p[0], +p[1], +p[2]); }
+  function addDays(iso, n) { return isoOf(isoToWall(iso) + n * DAY); }
+  function shiftDayOf(t) { return isoOf(t - SHIFT_START); }
+  function shiftStart(iso) { return isoToWall(iso) + SHIFT_START; }
+  function hhmm(t) { var d = new Date(t * MIN); return pad(d.getUTCHours()) + ':' + pad(d.getUTCMinutes()); }
+  var DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  var MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  function fmt(iso) { var d = new Date(isoToWall(iso) * MIN); return DOW[d.getUTCDay()] + ' ' + MON[d.getUTCMonth()] + ' ' + d.getUTCDate(); }
+  function fmtT(t) { return fmt(isoOf(t)) + ' ' + hhmm(t); }
+  function hours(m) { var h = Math.round(m / HOUR * 4) / 4; return h + (h === 1 ? ' hour' : ' hours'); }
+  // Aladtec style short times: 08-20, 20-08
+  function shortSpan(r) { return pad(new Date(r.start * MIN).getUTCHours()) + '-' + pad(new Date(r.end * MIN).getUTCHours()); }
+
+  // ---------- Contract holidays (CBA 9.1), computed for any year ----------
+  function nthWeekday(y, mo, dow, n) { // n = 1..5, or -1 for last
+    if (n > 0) { var first = new Date(Date.UTC(y, mo - 1, 1)).getUTCDay(); return 1 + ((dow - first + 7) % 7) + (n - 1) * 7; }
+    var lastDate = new Date(Date.UTC(y, mo, 0)).getUTCDate(), lastDow = new Date(Date.UTC(y, mo - 1, lastDate)).getUTCDay();
+    return lastDate - ((lastDow - dow + 7) % 7);
+  }
+  function holidayName(iso) {
+    var y = +iso.slice(0, 4), md = iso.slice(5), list = {};
+    list['01-01'] = "New Year's Day";
+    list['01-' + pad(nthWeekday(y, 1, 1, 3))] = 'MLK Day';
+    list['05-' + pad(nthWeekday(y, 5, 1, -1))] = 'Memorial Day';
+    list['07-04'] = 'Independence Day';
+    list['09-' + pad(nthWeekday(y, 9, 1, 1))] = 'Labor Day';
+    list['11-' + pad(nthWeekday(y, 11, 4, 4))] = 'Thanksgiving Day';
+    list['12-24'] = 'Christmas Eve Day'; list['12-25'] = 'Christmas Day'; list['12-31'] = "New Year's Eve Day";
+    return list[md] || '';
+  }
+
+  // ---------- Time zones ----------
+  // Every time is turned into the department's local clock (CBA 7.3: shifts start at 08:00 there).
+  var DEPT_TZ = 'America/Chicago', fmtCache = {};
+  function zoneOk(tz) { try { new Intl.DateTimeFormat('en-US', { timeZone: tz }); return true; } catch (e) { return false; } }
+  function zoneWallMs(ms, tz) { // the clock reading in tz at instant ms, as a UTC-based ms number
+    var f = fmtCache[tz] || (fmtCache[tz] = new Intl.DateTimeFormat('en-US', { timeZone: tz, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }));
+    var p = {}; f.formatToParts(new Date(ms)).forEach(function (x) { p[x.type] = x.value; });
+    return Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour % 24, +p.minute);
+  }
+  function zonedToInstant(y, mo, d, h, mi, tz) {
+    var target = Date.UTC(y, mo - 1, d, h, mi), guess = target;
+    for (var i = 0; i < 3; i++) guess = target - (zoneWallMs(guess, tz) - guess);
+    return guess;
+  }
+  function instantToDeptWall(ms) { return zoneWallMs(ms, DEPT_TZ) / MIN; }
+
+  // ---------- iCal reading ----------
+  function unesc(s) { return s.replace(/\\n/gi, '\n').replace(/\\([,;\\])/g, '$1'); }
+  function parseICS(text) {
+    var lines = text.replace(/\r?\n[ \t]/g, '').split(/\r?\n/), evs = [], cur = null;
+    lines.forEach(function (l) {
+      if (/^BEGIN:VEVENT$/i.test(l)) { cur = {}; return; }
+      if (/^END:VEVENT$/i.test(l)) { if (cur) evs.push(cur); cur = null; return; }
+      if (!cur) return;
+      var i = l.indexOf(':'); if (i < 0) return;
+      var parts = l.slice(0, i).split(';'), params = {};
+      parts.slice(1).forEach(function (p) { var j = p.indexOf('='); if (j > 0) params[p.slice(0, j).toUpperCase()] = p.slice(j + 1).replace(/^"|"$/g, ''); });
+      cur[parts[0].toUpperCase()] = { val: l.slice(i + 1), params: params };
+    });
+    return evs;
+  }
+  function parseTime(p) {
+    var m = /^(\d{4})(\d\d)(\d\d)(?:T(\d\d)(\d\d)(\d\d)?(Z)?)?$/.exec(p.val.trim());
+    if (!m) return null;
+    if (!m[4] || p.params.VALUE === 'DATE') return { t: wall(+m[1], +m[2], +m[3]), allDay: true };
+    var tz = p.params.TZID;
+    if (m[7]) return { t: instantToDeptWall(Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5])), allDay: false };
+    if (tz && tz !== DEPT_TZ && zoneOk(tz)) return { t: instantToDeptWall(zonedToInstant(+m[1], +m[2], +m[3], +m[4], +m[5], tz)), allDay: false };
+    return { t: wall(+m[1], +m[2], +m[3], +m[4], +m[5]), allDay: false }; // department time, or no zone given
+  }
+  function parseDuration(v) {
+    var m = /^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?)?$/.exec(v.trim());
+    return m ? (+(m[1] || 0)) * DAY + (+(m[2] || 0)) * HOUR + (+(m[3] || 0)) : null;
+  }
+  // Placeholders on the schedule that are not people.
+  var SLOT_RE = /fifth provider|tentative approv|ride along|\bstudent\b|\bmedic\b|^open\b|open shift|vacan|unfilled/i;
+
+  /* Returns {records, labels, skipped, notes, first, last}.
+     record: {id, name, start, end, kind: 'work'|'slot'|'event', forName} */
+  function importICS(text) {
+    var recs = [], labels = {}, skipped = 0, notes = [], byUid = {}, repeats = 0, cancelled = 0, dups = 0;
+    var evs = parseICS(text);
+    // Keep only the newest version of each entry (UID + RECURRENCE-ID, highest SEQUENCE); drop cancelled ones.
+    evs.forEach(function (e, i) {
+      var uid = e.UID ? e.UID.val + '|' + (e['RECURRENCE-ID'] ? e['RECURRENCE-ID'].val : '') : 'no-uid-' + i;
+      var seq = e.SEQUENCE ? +e.SEQUENCE.val || 0 : 0;
+      if (!byUid[uid] || seq >= byUid[uid].seq) byUid[uid] = { e: e, seq: seq, i: i };
+    });
+    var seen = {};
+    Object.keys(byUid).map(function (k) { return byUid[k]; }).sort(function (a, b) { return a.i - b.i; }).forEach(function (x) {
+      var e = x.e;
+      if (e.STATUS && /cancel/i.test(e.STATUS.val)) { cancelled++; return; }
+      if (e.RRULE) repeats++;
+      var s = e.DTSTART && parseTime(e.DTSTART);
+      if (!s) { skipped++; return; }
+      var sum = unesc((e.SUMMARY || { val: '' }).val).trim(), desc = unesc((e.DESCRIPTION || { val: '' }).val);
+      var end = e.DTEND ? parseTime(e.DTEND) : null, endT = end ? end.t : null;
+      if (endT == null && e.DURATION) { var du = parseDuration(e.DURATION.val); if (du != null) endT = s.t + du; }
+      if (s.allDay) { // shift labels such as "A Shift", one per day the item covers
+        var last = endT && endT > s.t ? endT : s.t + DAY;
+        for (var t = s.t; t < last; t += DAY) { var iso = isoOf(t); (labels[iso] = labels[iso] || []).push(sum); }
+        return;
+      }
+      if (endT == null || endT <= s.t) endT = s.t + HOUR;
+      var kind = 'work', name = sum, forName = '';
+      if (/(^|\n)\s*events?\s*($|\n)/i.test(desc) || /^events?:/i.test(sum)) kind = 'event';
+      else if (SLOT_RE.test(sum)) kind = 'slot';
+      var m = /^(.*?)\s+for\s+(.+)$/i.exec(sum);
+      if (kind === 'work' && m) { name = m[1].trim(); forName = m[2].trim(); }
+      var dm = /(?:^|\n)\s*(?:trade[:\s]*)?for\s+([^\n]+)/i.exec(desc);
+      if (kind === 'work' && !forName && dm) forName = dm[1].trim();
+      var key = [kind, name, s.t, endT, forName].join('|');
+      if (seen[key]) { dups++; return; }
+      seen[key] = 1;
+      recs.push({ name: name, start: s.t, end: endT, kind: kind, forName: forName, n: recs.length });
+    });
+    if (cancelled) notes.push(cancelled + ' cancelled entries were left out.');
+    if (dups) notes.push(dups + ' duplicate entries were counted once.');
+    if (repeats) notes.push(repeats + ' repeating entries only show their first date. Check the file was exported as single shifts.');
+    // Same start time: keep the feed's own order, which is how Aladtec lists positions.
+    recs.sort(function (a, b) { return a.start - b.start || a.n - b.n; });
+    recs.forEach(function (r, i) { r.id = i; });
+    var times = recs.map(function (r) { return r.start; });
+    return { records: recs, labels: labels, skipped: skipped, notes: notes,
+      first: times.length ? shiftDayOf(Math.min.apply(null, times)) : null,
+      last: times.length ? shiftDayOf(Math.max.apply(null, times)) : null };
+  }
+
+  // ---------- Schedule object ----------
+  function makeSchedule(imp, label) {
+    var work = imp.records.filter(function (r) { return r.kind === 'work'; });
+    var people = [];
+    function addP(n) { if (n && people.indexOf(n) === -1) people.push(n); }
+    work.forEach(function (r) { addP(r.name); addP(r.forName); }); // trade owners count too (F04)
+    people.sort();
+    var byDay = {};
+    imp.records.forEach(function (r) { var d = shiftDayOf(r.start); (byDay[d] = byDay[d] || []).push(r); });
+    var own = {};
+    work.forEach(function (r) { (own[r.name] = own[r.name] || []).push(r); });
+    return { label: label || 'Imported schedule', records: imp.records, work: work, people: people, labels: imp.labels,
+      byDay: byDay, first: imp.first, last: imp.last, skipped: imp.skipped, notes: imp.notes || [],
+      ownShifts: function (n) { return own[n] || []; },
+      onDay: function (iso) { return byDay[iso] || []; } };
+  }
+  function withInference(sc) { sc.inf = infer(sc); return sc; }
+
+  // ---------- Interval helpers ----------
+  function overlap(a0, a1, b0, b1) { return Math.max(0, Math.min(a1, b1) - Math.max(a0, b0)); }
+  function merge(iv, gap) { // union of [start,end] pairs; pieces closer than `gap` join up
+    iv = iv.slice().sort(function (a, b) { return a[0] - b[0]; });
+    var out = [];
+    iv.forEach(function (x) { var l = out[out.length - 1]; if (l && x[0] - l[1] < (gap || 0.5)) l[1] = Math.max(l[1], x[1]); else out.push([x[0], x[1]]); });
+    return out;
+  }
+  function ivs(shifts) { return shifts.map(function (r) { return [r.start, r.end]; }); }
+  function covered(shifts, o0, o1) { // minutes of [o0,o1) already scheduled, counting overlaps once (F11)
+    return merge(ivs(shifts)).reduce(function (s, x) { return s + overlap(x[0], x[1], o0, o1); }, 0);
+  }
+  function coveredIv(windows, o0, o1) { return merge(windows).reduce(function (s, x) { return s + overlap(x[0], x[1], o0, o1); }, 0); }
+  function freeParts(shifts, o0, o1) { // parts of the opening this person isn't already working
+    var out = [], t = o0;
+    merge(ivs(shifts)).forEach(function (x) { if (x[1] <= t || x[0] >= o1) return; if (x[0] > t) out.push([t, x[0]]); t = Math.max(t, x[1]); });
+    if (t < o1) out.push([t, o1]);
+    return out;
+  }
+  // X3: length of the work stretch containing [a,b); breaks under 24 hours don't reset it.
+  function stretch(shifts, a, b) {
+    var blocks = merge(ivs(shifts).concat([[a, b]]), DAY);
+    for (var j = 0; j < blocks.length; j++) if (blocks[j][0] <= a && blocks[j][1] >= b) return blocks[j][1] - blocks[j][0];
+    return b - a;
+  }
+  // Longest legal start and end pieces of [a,b) under the 96-hour limit (F05: keep partial availability).
+  function legalPieces(shifts, a, b) {
+    if (stretch(shifts, a, b) <= 96 * HOUR) return { full: true, pieces: [[a, b]] };
+    var front = 0, back = 0, step = 15;
+    for (var x = step; x < b - a; x += step) { if (stretch(shifts, a, a + x) <= 96 * HOUR) front = x; else break; }
+    for (var y = step; y < b - a; y += step) { if (stretch(shifts, b - y, b) <= 96 * HOUR) back = y; else break; }
+    var p = [];
+    if (front > 0) p.push([a, a + front]);
+    if (back > 0 && (!front || b - back > a + front)) p.push([b - back, b]);
+    return { full: false, pieces: p };
+  }
+  // X7: windows of 24 hours before and after any three shift days in a row with 12+ hours each.
+  function threeDayWindows(shifts, o0, o1) {
+    var out = [], d0 = shiftDayOf(o0), n = Math.ceil((o1 - o0) / DAY) + 4;
+    for (var k = -5; k <= n; k++) {
+      var d = addDays(d0, k), ok = true;
+      for (var j = 0; j < 3 && ok; j++) { var s = shiftStart(addDays(d, j)); if (covered(shifts, s, s + DAY) < 12 * HOUR) ok = false; }
+      if (!ok) continue;
+      var a = shiftStart(d), b = a + 3 * DAY, txt = fmt(d) + ' to ' + fmt(addDays(d, 2));
+      out.push({ from: a - DAY, to: a, text: txt }, { from: b, to: b + DAY, text: txt });
+    }
+    return out;
+  }
+
+  var NOTICE = {
+    lt24: 'Less than 24 hours',
+    '24to72': '24 to 72 hours',
+    '72toRot': 'More than 72 hours, less than one full A,A,B,B,C,C rotation (6 or 7 days)',
+    gtRot: 'More than one full rotation'
+  };
+  // Why the shift is open. Leave that must be covered by volunteers only: CBA 10.2 and 10.4, SOG 100.17.09(6).
+  var REASONS = {
+    sick: 'Sick or emergency (including sick leave)',
+    leave: 'Approved vacation, holiday or comp leave, 12+ hours, asked for on time',
+    short: 'Vacation of less than 12 hours',
+    late: 'Leave asked for after the deadline (not sick leave)'
+  };
+
+  /* Keep a saved list valid without losing anyone's place.
+     keep(n) says whether a saved name still belongs (default: always). New names go to the bottom. */
+  function orderedNames(saved, names, keep) {
+    var out = (saved || []).filter(function (n) { return !keep || keep(n); });
+    names.forEach(function (n) { if (out.indexOf(n) === -1) out.push(n); });
+    return out;
+  }
+
+  /* ---------- Reading the rotation from the schedule itself ----------
+     Nothing here is stored. Every import works these out again, so crew changes,
+     trades, new hires and rotation changes show up on their own. All of it is by real
+     clock time, so a 48-hour shift or a part-day counts for every day it touches. */
+  var FT_GUESS = 120, PT_FLAG = 40, FT_FLAG = 160; // owned hours per 28 days
+  function infer(sc) {
+    var freq = {};
+    Object.keys(sc.labels).forEach(function (d) { sc.labels[d].forEach(function (l) { freq[l] = (freq[l] || 0) + 1; }); });
+    var dayLabel = {};
+    Object.keys(sc.labels).forEach(function (d) {
+      var best = null;
+      sc.labels[d].forEach(function (l) { if (freq[l] >= 3 && (!best || freq[l] > freq[best])) best = l; });
+      if (best) dayLabel[d] = best;
+    });
+    // Owned time: their own shifts plus shifts someone works for them in a trade. Worked time: only their own.
+    var owned = {}, worked = {};
+    sc.work.forEach(function (r) {
+      var o = r.forName && r.forName !== r.name ? r.forName : r.name;
+      (owned[o] = owned[o] || []).push([r.start, r.end]);
+      (worked[r.name] = worked[r.name] || []).push([r.start, r.end]);
+    });
+    var days = [], d0 = sc.first, info = {};
+    if (d0) for (var d = d0; d <= sc.last; d = addDays(d, 1)) days.push(d);
+    var span = days.length || 28;
+    sc.people.forEach(function (n) {
+      var ow = owned[n] || [], byL = {}, tot = 0, top = null;
+      var total = merge(ow).reduce(function (s, x) { return s + x[1] - x[0]; }, 0) / HOUR;
+      days.forEach(function (dd) {
+        var l = dayLabel[dd]; if (!l) return;
+        var h = coveredIv(ow, shiftStart(dd), shiftStart(dd) + DAY) / HOUR;
+        if (h) { byL[l] = (byL[l] || 0) + h; tot += h; if (!top || byL[l] > byL[top]) top = l; }
+      });
+      var per28 = total * 28 / span, guess = per28 >= FT_GUESS ? 'ft' : 'pt', home = '';
+      if (guess === 'ft' && top) home = byL[top] / tot >= 0.75 ? top : 'KELLY';
+      info[n] = { hoursPer28: Math.round(per28), guess: guess, home: home };
+    });
+    // Days on their own shift letter with no time worked or traded at all: a Kelly day or leave.
+    var offOwn = {};
+    sc.people.forEach(function (n) {
+      var h = info[n].home; if (!h || h === 'KELLY') return;
+      offOwn[n] = days.filter(function (dd) { return dayLabel[dd] === h && coveredIv(owned[n] || [], shiftStart(dd), shiftStart(dd) + DAY) === 0; });
+    });
+    var labelsSeen = Object.keys(freq).filter(function (l) { return freq[l] >= 3; }).sort();
+    return { dayLabel: dayLabel, info: info, offOwn: offOwn, labelsSeen: labelsSeen, worked: worked,
+      hasLabels: Object.keys(dayLabel).length > 0 };
+  }
+
+  // The off-duty gap (end of last work to start of next work) that holds time t.
+  function gapAround(shifts, t) {
+    var m = merge(ivs(shifts)), from = -Infinity, to = Infinity;
+    for (var i = 0; i < m.length; i++) { if (m[i][1] <= t) from = m[i][1]; else if (m[i][0] > t) { to = m[i][0]; break; } else return null; }
+    return [from, to];
+  }
+  // Two untraded own-shift days off in a row inside that gap (SOG 100.17.11(2)(b)): a suggestion, not a fact.
+  function kellyGuess(inf, sc, n, t) {
+    var off = inf.offOwn[n]; if (!off || !off.length) return null;
+    var g = gapAround(sc.ownShifts(n), t); if (!g) return null;
+    var inside = off.filter(function (d) { return shiftStart(d) >= g[0] && shiftStart(d) + DAY <= g[1]; });
+    for (var i = 0; i + 1 < inside.length; i++) if (addDays(inside[i], 1) === inside[i + 1]) return { pair: [inside[i], inside[i + 1]], window: g };
+    return inside.length ? { single: inside, window: g } : null;
+  }
+
+  function minus(pieces, windows) { // remove windows from pieces
+    var out = pieces.slice();
+    windows.forEach(function (w) {
+      var next = [];
+      out.forEach(function (p) {
+        if (w[1] <= p[0] || w[0] >= p[1]) { next.push(p); return; }
+        if (w[0] > p[0]) next.push([p[0], w[0]]);
+        if (w[1] < p[1]) next.push([w[1], p[1]]);
+      });
+      out = next;
+    });
+    return out;
+  }
+  function intersect(a, b) {
+    var out = [];
+    a.forEach(function (x) { b.forEach(function (y) { var s = Math.max(x[0], y[0]), e = Math.min(x[1], y[1]); if (e > s) out.push([s, e]); }); });
+    return merge(out);
+  }
+  function total(p) { return p.reduce(function (s, x) { return s + x[1] - x[0]; }, 0); }
+  function spans(p) { return p.map(function (x) { return fmtT(x[0]) + ' to ' + fmtT(x[1]); }).join(' and '); }
+
+  /* opts: {sched, entry (a work record), from, to (optional: the real vacancy inside or around the entry),
+            notice, reason, roster {name: 'ft'|'pt'|'ignore'}, mandList, volList,
+            leave, kelly, unprot, ot20, certs: arrays of names} */
+  function computeCallout(opts) {
+    var sc = opts.sched, e = opts.entry, caller = e.name;
+    var o0 = opts.from != null ? opts.from : e.start, o1 = opts.to != null ? opts.to : e.end;
+    var notice = opts.notice || 'lt24', reason = opts.reason || 'sick';
+    if (reason === 'blackout') reason = 'leave'; // old name for holiday leave
+    var inf = sc.inf || infer(sc), roster = effectiveRoster(sc, opts.roster);
+    var leave = opts.leave || [], kelly = opts.kelly || [], unprot = opts.unprot || [], ot20 = opts.ot20 || [], certs = opts.certs || [];
+    var people = sc.people.slice();
+    Object.keys(opts.roster || {}).forEach(function (n) { if (opts.roster[n] === 'ft' && people.indexOf(n) === -1) people.push(n); });
+    people = people.filter(function (n) { return roster[n] !== 'ignore'; });
+    var ft = people.filter(function (n) { return roster[n] === 'ft'; });
+    var mandList = activeList(opts.mandList, ft, 'top'), volList = activeList(opts.volList, ft, 'bottom');
+    var holiday = holidayName(shiftDayOf(o0));
+    var res = { entry: e, caller: caller, from: o0, to: o1, notice: notice, reason: reason, holiday: holiday,
+      opening: fmtT(o0) + ' to ' + fmtT(o1) + ' (' + hours(o1 - o0) + ')',
+      steps: [], groups: [], noCall: [], noMandate: [], needsRole: [], warnings: [], notes: {}, hoursFor: {} };
+
+    if (o1 <= o0) { res.warnings.push('The opening has no length. Check the start and end times.'); return res; }
+    if (sc.first && o0 - 4 * DAY < shiftStart(sc.first)) res.warnings.push('The loaded schedule starts ' + fmt(sc.first) + '. Shifts before that are unknown, so the on-duty crew, Kelly days and the 96-hour and 3-day checks may be incomplete. Load a schedule that starts earlier.');
+    if (sc.last && o1 + 4 * DAY > shiftStart(sc.last) + DAY) res.warnings.push('The loaded schedule ends ' + fmt(sc.last) + '. Shifts after that are unknown, so Kelly days and the 96-hour and 3-day checks may be incomplete.');
+    if (!inf.hasLabels) res.warnings.push('This schedule has no shift labels (like "A Shift"), so Kelly days can\'t be read from it. Use the Kelly tick box.');
+    var capCount = leave.filter(function (n) { return unprot.indexOf(n) === -1; }).length;
+    if (capCount > 2) res.warnings.push(capCount + ' people are marked on approved leave. Only two may be protected for approved leave at a time (SOG 100.17.12); the Chief says who is not protected on which days. Tick "Not protected" for anyone the Chief names. Kelly days don\'t count toward the two.');
+    (sc.notes || []).forEach(function (x) { res.warnings.push('Schedule file: ' + x); });
+
+    var volOnly = reason === 'short' || reason === 'late' || (reason === 'leave' && !!holiday);
+    var avail = [], volunteers = [];
+    people.forEach(function (n) {
+      var shifts = sc.ownShifts(n), noCall = [], noMand = [], notes = [];
+      if (n === caller) { res.noCall.push({ name: n, reasons: ['Called out for this opening.'] }); return; }
+      var free = freeParts(shifts, o0, o1);
+      if (!free.length) { res.noCall.push({ name: n, reasons: ['Already on the ambulance for this whole opening (SOG 100.17.11(1)).'] }); return; }
+      if (total(free) < o1 - o0) notes.push('Already working ' + hours(o1 - o0 - total(free)) + ' of this opening; could cover ' + spans(free) + '.');
+      var legal = [];
+      free.forEach(function (p) { legal = legal.concat(legalPieces(shifts, p[0], p[1]).pieces); });
+      legal = merge(legal);
+      if (!legal.length) noCall.push('Any of this opening would put them over 96 hours without a 24-hour break (SOG 100.17.03).');
+      else if (total(legal) < total(free)) notes.push('Only ' + spans(legal) + ' is within the 96-hour limit (SOG 100.17.03).');
+      if (certs.indexOf(n) !== -1) noCall.push('Marked as not current on certifications or not cleared to drive (SOG 100.17.06).');
+      if (sc.people.indexOf(n) === -1) notes.push('Not on the loaded schedule at all. Make sure they are not on leave before calling.');
+      var traded = sc.work.filter(function (r) { return r.forName === n && r.name !== n && overlap(r.start, r.end, o0 - DAY, o1 + DAY); });
+      if (traded.length) notes.push('Traded time near this opening to ' + traded[0].name + '. A trade is not approved leave, so it gives no mandate protection (CBA 7.7).');
+      if (noCall.length) { res.noCall.push({ name: n, reasons: noCall.concat(notes) }); return; }
+
+      // Mandate protection, as time windows.
+      var prot = [], why = [];
+      var g = gapAround(shifts, o0) || gapAround(shifts, legal[0][0]) || [o0, o1];
+      var isUnprot = unprot.indexOf(n) !== -1;
+      if (roster[n] === 'pt') { prot.push([o0, o1]); why.push('Part-time: not on the Mandatory Overtime List. May volunteer (SOG 100.17.04, 100.17.09(7)(b)).'); }
+      if (!isUnprot) {
+        if (leave.indexOf(n) !== -1) { prot.push(g); why.push('Marked on approved leave: protected from the end of their last shift to the start of their next (SOG 100.17.11(2)(a)).'); }
+        if (kelly.indexOf(n) !== -1) { prot.push(g); why.push('Marked on two Kelly days off in a row, which counts as approved leave without using one of the two leave spots (SOG 100.17.11(2)(b), 100.17.12).'); }
+        else if (roster[n] === 'ft' && leave.indexOf(n) === -1) {
+          var kg = kellyGuess(inf, sc, n, legal[0][0]);
+          if (kg && kg.pair) { prot.push(kg.window); why.push('Probably two Kelly days off (' + fmt(kg.pair[0]) + ' and ' + fmt(kg.pair[1]) + ': off on their own shift with no trade), read from the schedule (SOG 100.17.11(2)(b)). If it was approved leave instead, tick "Approved leave" so it counts toward the two-person limit. If they are not protected, tick "Not protected".'); }
+          else if (kg && kg.single) notes.push('Off on their own shift ' + kg.single.map(fmt).join(', ') + ' with no trade. One Kelly day gives no protection; if it was approved leave, tick "Approved leave".');
+        }
+      } else notes.push('Marked "Not protected", so leave and Kelly protection are ignored for this opening.');
+      if (ot20.indexOf(n) !== -1) { prot.push([o0, o1]); why.push('Marked as within 24 hours before or after 20+ hours of voluntary overtime in a row (SOG 100.17.11(3)).'); }
+      threeDayWindows(shifts, o0, o1).forEach(function (w) {
+        if (overlap(w.from, w.to, o0, o1)) { prot.push([w.from, w.to]); why.push('Scheduled 12+ hours on three days in a row (' + w.text + '); protected for the 24 hours next to them (SOG 100.17.11(4)).'); }
+      });
+      var mand = minus(legal, merge(prot));
+      if (notes.length) res.notes[n] = notes;
+      res.hoursFor[n] = { legal: legal, mand: mand };
+      volunteers.push(n);
+      if (!mand.length) res.noMandate.push({ name: n, reasons: uniq(why).concat(notes) });
+      else {
+        if (total(mand) < total(legal)) notes.push('Can be mandated only for ' + spans(mand) + '. ' + uniq(why).join(' '));
+        if (notes.length) res.notes[n] = notes;
+        avail.push(n);
+      }
+    });
+
+    function line(n, which, list) {
+      var h = res.hoursFor[n], extra = [];
+      if (h && total(h.mand) < o1 - o0) extra.push('Mandate for: ' + spans(h.mand) + '.');
+      return { name: n, why: '#' + (list.indexOf(n) + 1) + ' on the ' + which + ' Overtime List', notes: extra.concat(res.notes[n] || []) };
+    }
+    function inOrder(subset, list, which) {
+      return list.filter(function (n) { return subset.indexOf(n) !== -1; }).map(function (n) { return line(n, which, list); });
+    }
+    var passStep = 'A person being mandated may use their one pass for the year, said out loud to the person issuing the mandate at the time. They go to the bottom of the Mandatory list, the pass is dated on the posted list and emailed to them, and you move to the next name (SOG 100.17.13).';
+    var listStep = 'After someone is mandated, move them to the bottom of the Mandatory list. Exception: a mandate of 1 hour or less right next to hours they are already working does not count (SOG 100.17.08).';
+
+    if (volOnly) {
+      var why0 = reason === 'short' ? 'a vacation of less than 12 hours (CBA 10.2)' : reason === 'late' ? 'leave asked for after the deadline, which follows the blackout policy (CBA 10.2, 10.4)' : 'leave on a contract holiday, a blackout date (' + holiday + ', CBA 10.4)';
+      res.steps.push('This opening is ' + why0 + '. Nobody may be mandated. Cover it only with volunteers; if it can\'t be fully covered, the leave is denied (CBA 10.2, 10.4; SOG 100.17.09(6)).');
+      res.steps.push('Offer it to full-time and part-time staff. The first person to take the whole opening gets it; people taking part of it only count if together the whole opening gets covered.');
+      if (reason === 'short') res.steps.push('Leave of less than 12 hours is not approved leave for mandate protection, so the caller can still be mandated elsewhere (CBA 10.2).');
+      res.groups.push({ title: 'May volunteer (first come, first served)', note: 'Nobody can be mandated for this opening.', volunteer: true,
+        people: volunteers.map(function (n) { return { name: n, why: roster[n] === 'pt' ? 'Part-time' : '', notes: res.notes[n] || [] }; }) });
+      res.noMandate = res.noMandate.filter(function () { return false; });
+      return res;
+    }
+    if (reason === 'leave') res.steps.push('Approved leave of 12+ hours, asked for on time, on a non-holiday: fill it the normal way for the notice you have.');
+
+    res.steps.push('First check whether a fill is needed: if the remaining crew still gives a legal two-paramedic ambulance, no one is called (SOG 100.50.06).');
+    if (notice === 'gtRot') {
+      res.steps.push('Post it in the scheduling software for full-time staff for at least 12 hours, offered in Voluntary Overtime List order (SOG 100.17.09(7)(a)).');
+      res.steps.push('If no full-timer takes it, post it for part-time, LTE and qualified volunteers for at least 12 hours, and no longer than the full-time posting (SOG 100.17.09(7)(b)).');
+      res.steps.push('Admin staff may then take it, before any mandate (SOG 100.17.09(7)(c)).');
+      res.steps.push('Mandates go out as early as possible, starting one full rotation before the opening. Tell the person in person or by phone and also by email (SOG 100.17.09(7)(d), 100.17.10(1)(b)).');
+      res.steps.push(passStep); res.steps.push(listStep);
+      var offer = volList.filter(function (n) { return volunteers.indexOf(n) !== -1; });
+      res.groups.push({ title: 'Step A. Offer to full-time volunteers in this order', note: 'Voluntary Overtime List order (fewest voluntary overtime hours first). Protected people may still volunteer.', volunteer: true,
+        people: offer.map(function (n) { return line(n, 'Voluntary', volList); }) });
+      res.groups.push({ title: 'Step B. If nobody volunteers, mandate in this order', note: 'Top-most eligible person for as many hours as allowed, then the next for what is left (SOG 100.17.10).', people: inOrder(avail, mandList, 'Mandatory') });
+      return res;
+    }
+
+    res.steps.push('Management has first right to take a short-notice opening, before anyone is notified (SOG 100.17B.06).');
+    res.steps.push('Post it in the scheduling software and wait at least ' + (notice === 'lt24' ? '1 hour' : '4 hours') + ' for a volunteer. The Chief may shorten the wait, but not arbitrarily (SOG 100.17B.04).');
+    if (notice !== '72toRot') res.steps.push('With under 72 hours of notice, a full-timer who volunteers for the whole opening or at least 12 hours of it goes to the bottom of the Mandatory list, and the hours count as mandated. If they take over someone else\'s mandate, the original person goes back to their old spot (SOG 100.17B.04).');
+    if (notice === '72toRot') res.steps.push('Mandate by email and phone call; leave a voicemail if they don\'t answer, or tell them face to face if they are on duty (still send the email). Every notice must go out at least 60 hours before the opening (SOG 100.17B.04).');
+    if (notice === '24to72') res.steps.push('Mandate by phone call (a text only in addition). If the person does not answer the first call, leave a voicemail and move to the next person. You must actually speak to the person mandated, then email them before the hours start (SOG 100.17B.04).');
+    if (notice === 'lt24') res.steps.push('Tell the mandated person directly, and email them before the hours start (SOG 100.17B.04).');
+    if (o0 > e.start) res.steps.push('This opening starts partway through the shift. For mid-shift or mid-tour openings, management may use good-faith judgment to fill it (SOG 100.17B.05).');
+    res.steps.push(passStep); res.steps.push(listStep);
+
+    if (notice === 'lt24') {
+      // "currently covering the ambulance schedule up to the point of the schedule vacancy", first 24 hours (SOG 100.17B.04)
+      var cut = Math.min(o1, o0 + DAY);
+      var hold = avail.filter(function (n) {
+        return n !== caller && sc.ownShifts(n).some(function (r) { return r.start < o0 && r.end >= o0; }) && coveredIv(res.hoursFor[n].mand, o0, cut) > 0;
+      });
+      if (hold.length) res.groups.push({ title: 'Mandate first: on duty when the opening starts (' + fmtT(o0) + ')',
+        note: 'They are working right up to the opening. For the first 24 hours, the top-most of them on the Mandatory list is mandated first (SOG 100.17B.04).', people: inOrder(hold, mandList, 'Mandatory') });
+      var rest = avail.filter(function (n) { return hold.indexOf(n) === -1; });
+      res.groups.push({ title: 'If that doesn\'t cover the first 24 hours: management\'s decision', discretion: true,
+        note: 'The SOG does not say who is mandated when nobody on duty can cover it. This is the Mandatory list order, as one option for management to decide on (SOG 100.17B.04, 100.17B.05, 100.17B.07; RULES.md rule M2).',
+        people: inOrder(rest.filter(function (n) { return coveredIv(res.hoursFor[n].mand, o0, cut) > 0; }), mandList, 'Mandatory') });
+      if (o1 > cut) res.groups.push({ title: 'Hours after ' + fmtT(cut) + ': mandate in this order', note: 'Past the first 24 hours, the 24-to-72-hour process applies to the rest (SOG 100.17B.04).',
+        people: inOrder(avail.filter(function (n) { return coveredIv(res.hoursFor[n].mand, cut, o1) > 0; }), mandList, 'Mandatory') });
+      if (!hold.length) res.warnings.push('Nobody on duty right before ' + fmtT(o0) + ' can be mandated, and the SOG doesn\'t say what happens next. The list below is shown as management\'s decision, not a rule.');
+    } else {
+      res.groups.push({ title: 'Mandate in this order', note: 'Top-most eligible person on the Mandatory Overtime List for as many hours as allowed, then the next for what is left (SOG 100.17B.04).', people: inOrder(avail, mandList, 'Mandatory') });
+    }
+    return res;
+  }
+  function uniq(a) { return a.filter(function (x, i) { return a.indexOf(x) === i; }); }
+
+  /* Roles: what the scheduler set wins; otherwise the guess from hours worked. */
+  function effectiveRoster(sc, saved) {
+    var inf = sc.inf || infer(sc), out = {};
+    sc.people.forEach(function (n) { out[n] = (saved && saved[n]) || (inf.info[n] ? inf.info[n].guess : 'pt'); });
+    Object.keys(saved || {}).forEach(function (n) { if (!out[n]) out[n] = saved[n]; });
+    return out;
+  }
+  /* Things worth a second look after an import. Each is a plain sentence for the scheduler. */
+  function rosterChecks(sc, saved, lists) {
+    var inf = sc.inf || infer(sc), out = [];
+    saved = saved || {}; lists = lists || {};
+    sc.people.forEach(function (n) {
+      var i = inf.info[n]; if (!i) return;
+      if (!saved[n]) out.push({ name: n, kind: 'new', text: n + ' is new to the tool. Guessed ' + (i.guess === 'ft' ? 'full-time' : 'part-time') + ' from ' + i.hoursPer28 + ' hours per 4 weeks. Confirm it.' + (i.guess === 'ft' ? ' If they are full-time, also put them in the right place on the seniority and overtime lists.' : '') });
+      else if (saved[n] === 'ft' && i.hoursPer28 < PT_FLAG) out.push({ name: n, kind: 'role', text: n + ' is set as full-time but has only ' + i.hoursPer28 + ' hours per 4 weeks on this schedule. If they went part-time, change it. If they are on leave, leave it.' });
+      else if (saved[n] === 'pt' && i.hoursPer28 > FT_FLAG) out.push({ name: n, kind: 'role', text: n + ' is set as part-time but has ' + i.hoursPer28 + ' hours per 4 weeks. If they went full-time, change it and place them on the lists.' });
+    });
+    Object.keys(saved).forEach(function (n) {
+      if (saved[n] === 'ft' && sc.people.indexOf(n) === -1) out.push({ name: n, kind: 'missing', text: n + ' is not on this schedule. They are still offered in the call lists with a warning. If they left, set them to "Not on the lists"; if they are on leave, tick it when you handle an opening.' });
+      if (saved[n] === 'ft' && lists.mand && lists.mand.length && lists.mand.indexOf(n) === -1) out.push({ name: n, kind: 'list', text: n + ' is full-time but not on the saved overtime lists yet. Until you place them, they sit at the top of the Mandatory list and the bottom of the Voluntary list. Move them to the right spots.' });
+    });
+    if (lists.labelsSeen && inf.labelsSeen.length && inf.labelsSeen.join() !== lists.labelsSeen.join())
+      out.push({ name: '', kind: 'rotation', text: 'The shift labels changed (was ' + lists.labelsSeen.join(', ') + ', now ' + inf.labelsSeen.join(', ') + '). Crews and Kelly days are read fresh from each schedule, but check the call lists look right.' });
+    return out;
+  }
+  /* The active list is the saved order cut down to current full-timers. A full-timer the list has
+     never seen is placed provisionally (top of Mandatory, bottom of Voluntary) and flagged by rosterChecks. */
+  function activeList(saved, ft, newAt) {
+    var base = (saved || []).slice(), fresh = ft.filter(function (n) { return base.indexOf(n) === -1; });
+    base = newAt === 'top' ? fresh.concat(base) : base.concat(fresh);
+    return base.filter(function (n) { return ft.indexOf(n) !== -1; });
+  }
+
+  var api = { infer: infer, withInference: withInference, effectiveRoster: effectiveRoster, rosterChecks: rosterChecks, activeList: activeList,
+    importICS: importICS, makeSchedule: makeSchedule, computeCallout: computeCallout, orderedNames: orderedNames,
+    holidayName: holidayName, NOTICE: NOTICE, REASONS: REASONS, fmt: fmt, fmtT: fmtT, hhmm: hhmm, shortSpan: shortSpan, addDays: addDays,
+    isoOf: isoOf, shiftDayOf: shiftDayOf, shiftStart: shiftStart, wall: wall, HOUR: HOUR, DAY: DAY, DEPT_TZ: DEPT_TZ };
+  if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.CalloutEngine = api;
+})(this);
+
+</script>
+<script>
+/* Page code: load schedule, calendar, sidebar, roster and lists. Logic lives in engine.js. */
+(function () {
+  'use strict';
+  var W = window.CalloutEngine;
+  var KEY = 'callout-helper-settings-v2', SCHED_KEY = 'callout-helper-schedule-v2';
+  var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+  // ---------- Saved settings (this browser only). Only what the schedule can't show. ----------
+  // roles: {name: 'ft'|'pt'|'ignore'}   seniority/mand/vol: ordered names   labelsSeen: last import's shift labels
+  function load(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } }
+  function store(k, v) { try { localStorage.setItem(k, typeof v === 'string' ? v : JSON.stringify(v)); return true; } catch (e) { return false; } }
+  var S = load(KEY) || {};
+  S.roles = S.roles || {}; S.seniority = S.seniority || []; S.mand = S.mand || []; S.vol = S.vol || [];
+  function save() { store(KEY, S); }
+  function listsReady() { return S.seniority.length > 0 && S.mand.length > 0 && S.vol.length > 0; }
+
+  var sched = null, checks = [], short = {};
+  // Short calendar names: first name, plus last-name letters only where first names clash.
+  function makeShort(names) {
+    var out = {}, by = {};
+    names.forEach(function (n) { var f = n.split(' ')[0]; (by[f] = by[f] || []).push(n); });
+    Object.keys(by).forEach(function (f) {
+      by[f].forEach(function (n) {
+        if (by[f].length === 1) { out[n] = f; return; }
+        var rest = n.split(' ').slice(1).join(' '), k = 1;
+        while (k < rest.length && by[f].some(function (m) { return m !== n && m.split(' ').slice(1).join(' ').slice(0, k) === rest.slice(0, k); })) k++;
+        out[n] = f + ' ' + rest.slice(0, k) + '.';
+      });
+    });
+    return out;
+  }
+  function sn(n) { return short[n] || n; }
+  var state = { year: 0, month: 0, pick: null, from: null, to: null, notice: 'lt24', reason: 'sick', leave: [], kelly: [], unprot: [], ot20: [], certs: [] };
+  var tickOpen = false;
+
+  function $(id) { return document.getElementById(id); }
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function btn(text, fn, cls, disabled) { var b = el('button', 'small' + (cls ? ' ' + cls : ''), text); b.type = 'button'; b.disabled = !!disabled; b.onclick = fn; return b; }
+
+  // ---------- Loading a schedule ----------
+  function useSchedule(text, label, remember) {
+    var imp = W.importICS(text);
+    if (!imp.records.length) { alert('No schedule entries were found in that file. Make sure it is an iCal (.ics) calendar file.'); return false; }
+    sched = W.withInference(W.makeSchedule(imp, label));
+    if (remember && !store(SCHED_KEY, JSON.stringify({ label: label, text: text }))) {
+      // Too big to keep: it still works now, it just needs loading again next time.
+    }
+    var every = sched.people.slice(); sched.work.forEach(function (r) { if (r.forName && every.indexOf(r.forName) === -1) every.push(r.forName); });
+    short = makeShort(every);
+    checks = W.rosterChecks(sched, S.roles, { labelsSeen: S.labelsSeen, mand: S.mand });
+    (sched.notes || []).forEach(function (x) { checks.push({ name: '', kind: 'file', text: 'Schedule file: ' + x }); });
+    S.labelsSeen = sched.inf.labelsSeen; save();
+    var today = new Date(), ti = today.getFullYear() + '-' + pad(today.getMonth() + 1) + '-' + pad(today.getDate());
+    var start = ti >= sched.first && ti <= sched.last ? ti : sched.first;
+    state.year = +start.slice(0, 4); state.month = +start.slice(5, 7) - 1; state.pick = null;
+    $('sourceLabel').textContent = label + ', ' + W.fmt(sched.first) + ' to ' + W.fmt(sched.last);
+    $('welcome').hidden = true; $('main').hidden = false;
+    drawAll();
+    if (checks.length) openRoster();
+    return true;
+  }
+  function readFile(file) {
+    var r = new FileReader();
+    r.onload = function () { useSchedule(String(r.result), file.name.replace(/\.ics$/i, ''), true); };
+    r.readAsText(file);
+  }
+
+  // ---------- Banner: what needs a look ----------
+  function drawBanner() {
+    var b = $('banner'); b.innerHTML = '';
+    var ftSet = W.effectiveRoster(sched, S.roles), anyFt = Object.keys(ftSet).some(function (n) { return ftSet[n] === 'ft'; });
+    var msgs = [];
+    if (checks.length) msgs.push(checks.length + (checks.length === 1 ? ' thing' : ' things') + ' changed since the last schedule (new names or hours that don\'t match a role).');
+    if (!listsReady() && anyFt) msgs.push('The seniority and overtime lists are not set up yet, so the call order is practice only.');
+    else if (S.seniority.length && S.listsFrom !== S.seniority.join('|') && !S.listsEdited) msgs.push('Seniority changed after the overtime lists were built. Check the lists.');
+    if (!msgs.length) { b.hidden = true; return; }
+    b.hidden = false;
+    b.appendChild(el('span', null, msgs.join(' ')));
+    b.appendChild(btn('Review', openRoster));
+  }
+
+  // ---------- Calendar ----------
+  function drawCalendar() {
+    $('monthTitle').textContent = MONTHS[state.month] + ' ' + state.year;
+    var grid = $('grid'); grid.innerHTML = '';
+    ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].forEach(function (d) { grid.appendChild(el('div', 'dow', d)); });
+    var first = new Date(Date.UTC(state.year, state.month, 1)).getUTCDay();
+    var days = new Date(Date.UTC(state.year, state.month + 1, 0)).getUTCDate();
+    for (var i = 0; i < first; i++) grid.appendChild(el('div', 'day empty'));
+    for (var d = 1; d <= days; d++) grid.appendChild(dayCell(state.year + '-' + pad(state.month + 1) + '-' + pad(d), d));
+  }
+  // One function call per day, so each click handler keeps its own entry.
+  function dayCell(iso, d) {
+    var cell = el('div', 'day'), head = el('div', 'dhead');
+    head.appendChild(el('span', 'dnum', String(d)));
+    var lab = sched.inf.dayLabel[iso], hol = W.holidayName(iso);
+    if (lab) head.appendChild(el('span', 'lab', lab));
+    if (hol) { cell.classList.add('holiday'); head.appendChild(el('span', 'hol', hol)); }
+    cell.appendChild(head);
+    var entries = sched.onDay(iso).filter(function (r) { return r.kind !== 'event'; });
+    if (!entries.length && (iso < sched.first || iso > sched.last)) cell.classList.add('outside');
+    entries.forEach(function (r) {
+      var row = el('div', 'entry' + (r.kind === 'slot' ? ' slot' : ''));
+      if (r.kind === 'work') {
+        var b = el('button', 'name', sn(r.name)); b.type = 'button'; b.title = r.name;
+        b.setAttribute('aria-label', r.name + ' calls out, ' + W.fmtT(r.start) + ' to ' + W.fmtT(r.end));
+        if (state.pick && state.pick.id === r.id) b.classList.add('picked');
+        if (S.roles[r.name] === 'ignore') b.classList.add('ignored');
+        b.onclick = function () { pick(r); };
+        row.appendChild(b);
+      } else row.appendChild(el('span', 'slotname', r.name));
+      var t = el('span', 'span', W.shortSpan(r)); row.appendChild(t);
+      if (r.forName) { row.title = 'Trade: ' + r.name + ' working for ' + r.forName; row.appendChild(el('span', 'trade', 'for ' + sn(r.forName))); }
+      cell.appendChild(row);
+    });
+    return cell;
+  }
+  // Tick boxes belong to one opening: a new click or new times clear them (they are facts about that time).
+  function clearTicks() { state.leave = []; state.kelly = []; state.unprot = []; state.ot20 = []; state.certs = []; }
+  function pick(r) {
+    clearTicks(); state.pick = r; state.from = r.start; state.to = r.end;
+    drawCalendar(); drawSidebar(); $('side').scrollTop = 0;
+  }
+  // Opening start/end inputs, in department time (minutes since 1970 as wall clock).
+  function toInput(t) { var d = new Date(t * 60000); return d.toISOString().slice(0, 16); }
+  function fromInput(v) { var m = /^(\d{4})-(\d\d)-(\d\d)T(\d\d):(\d\d)$/.exec(v); return m ? W.wall(+m[1], +m[2], +m[3], +m[4], +m[5]) : null; }
+  function timeBox(label, value, onchange) {
+    var wrap = el('label', 'sel'); wrap.appendChild(el('span', null, label));
+    var i = el('input'); i.type = 'datetime-local'; i.value = toInput(value); i.step = 900;
+    i.onchange = function () { var t = fromInput(i.value); if (t != null) onchange(t); };
+    wrap.appendChild(i); return wrap;
+  }
+
+  // ---------- Sidebar ----------
+  function drawSidebar() {
+    var side = $('result'); side.innerHTML = '';
+    if (!state.pick) {
+      side.appendChild(el('h2', null, 'Who calls out?'));
+      side.appendChild(el('p', 'hint big', 'Click a person\'s name on the calendar. This side will show who to call, in order, and who must not be called.'));
+      return;
+    }
+    var r = W.computeCallout({ sched: sched, entry: state.pick, from: state.from, to: state.to, notice: state.notice, reason: state.reason, roster: S.roles,
+      mandList: listsReady() ? S.mand : null, volList: listsReady() ? S.vol : null,
+      leave: state.leave, kelly: state.kelly, unprot: state.unprot, ot20: state.ot20, certs: state.certs });
+    side.appendChild(el('h2', null, r.caller + ' calls out'));
+    side.appendChild(el('div', 'sub', r.opening + (r.holiday ? ', ' + r.holiday : '')));
+    var opts = el('div', 'opts');
+    var times = el('div', 'times');
+    times.appendChild(timeBox('Opening starts', state.from, function (t) { state.from = t; clearTicks(); drawSidebar(); }));
+    times.appendChild(timeBox('Opening ends', state.to, function (t) { state.to = t; clearTicks(); drawSidebar(); }));
+    opts.appendChild(times);
+    opts.appendChild(el('div', 'hint', 'Change these if only part of the shift is open, for example someone leaving at noon.'));
+    opts.appendChild(selectBox('How much notice?', W.NOTICE, state.notice, function (v) { state.notice = v; drawSidebar(); }));
+    opts.appendChild(selectBox('Why is the shift open?', W.REASONS, state.reason, function (v) { state.reason = v; drawSidebar(); }));
+    side.appendChild(opts);
+    r.warnings.forEach(function (w) { side.appendChild(el('div', 'warn', w)); });
+
+    var steps = el('details', 'steps'); steps.open = true;
+    steps.appendChild(el('summary', null, 'Before you call anyone (' + r.steps.length + ' steps)'));
+    var ol = el('ol'); r.steps.forEach(function (s) { ol.appendChild(el('li', null, s)); }); steps.appendChild(ol);
+    side.appendChild(steps);
+
+    var ticks = el('details', 'tickbox'); ticks.open = tickOpen; ticks.ontoggle = function () { tickOpen = ticks.open; };
+    var marked = state.leave.length + state.kelly.length + state.unprot.length + state.ot20.length + state.certs.length;
+    ticks.appendChild(el('summary', null, 'Things the schedule does not show' + (marked ? ' (' + marked + ' marked)' : '')));
+    ticks.appendChild(el('p', 'hint', 'Tick anyone this applies to for this opening only (they clear when you pick another opening). "Not protected" is for when the Chief says someone on leave or Kelly days can still be mandated, or the tool guessed a Kelly day wrong.'));
+    ticks.appendChild(tickTable());
+    side.appendChild(ticks);
+
+    var n = 0;
+    side.appendChild(el('h3', 'callhead', 'Call in this order'));
+    if (!listsReady()) side.appendChild(el('div', 'warn', 'Practice only: the seniority and overtime lists have not been set up, so these positions are not real yet. Open "Roster and lists".'));
+    r.groups.forEach(function (g) {
+      side.appendChild(el('div', 'gtitle' + (g.discretion ? ' discretion' : ''), g.title));
+      if (g.note) side.appendChild(el('div', 'gnote', g.note));
+      var list = el('ol', 'calllist');
+      if (!g.people.length) list.appendChild(el('li', 'none', 'Nobody in this group.'));
+      g.people.forEach(function (p) {
+        var li = el('li'); li.value = ++n;
+        li.appendChild(el('strong', null, p.name));
+        if (p.why) li.appendChild(el('span', 'why', p.why));
+        (p.notes || []).forEach(function (x) { li.appendChild(el('span', 'why note', x)); });
+        list.appendChild(li);
+      });
+      side.appendChild(list);
+    });
+    side.appendChild(el('h3', 'nohead', 'Do NOT call'));
+    var nc = el('ul', 'nolist'); r.noCall.forEach(function (x) { nc.appendChild(personLine(x)); }); side.appendChild(nc);
+    if (r.noMandate.length) {
+      side.appendChild(el('h3', 'nohead soft', 'Do NOT mandate (may still volunteer)'));
+      var nm = el('ul', 'nolist soft'); r.noMandate.forEach(function (x) { nm.appendChild(personLine(x)); }); side.appendChild(nm);
+    }
+  }
+  function personLine(x) { var li = el('li'); li.appendChild(el('strong', null, x.name)); x.reasons.forEach(function (r) { li.appendChild(el('span', 'why', r)); }); return li; }
+  function selectBox(label, options, value, onchange) {
+    var wrap = el('label', 'sel'); wrap.appendChild(el('span', null, label));
+    var s = el('select');
+    Object.keys(options).forEach(function (k) { var o = el('option', null, options[k]); o.value = k; if (k === value) o.selected = true; s.appendChild(o); });
+    s.onchange = function () { onchange(s.value); }; wrap.appendChild(s); return wrap;
+  }
+  function tickTable() {
+    var cols = [['leave', 'Approved leave'], ['kelly', 'Two Kelly days off'], ['unprot', 'Not protected'], ['ot20', 'Within 24 h of 20+ h voluntary OT'], ['certs', 'Certs lapsed or can\'t drive']];
+    var t = el('table', 'ticks'), hr = el('tr'); hr.appendChild(el('th', null, 'Name'));
+    cols.forEach(function (c) { hr.appendChild(el('th', null, c[1])); }); t.appendChild(hr);
+    var roles = W.effectiveRoster(sched, S.roles);
+    sched.people.filter(function (n) { return roles[n] !== 'ignore'; }).forEach(function (n) {
+      var tr = el('tr'); tr.appendChild(el('td', 'tn', n));
+      cols.forEach(function (c) {
+        var td = el('td'), cb = el('input'); cb.type = 'checkbox';
+        cb.checked = state[c[0]].indexOf(n) !== -1; cb.setAttribute('aria-label', n + ': ' + c[1]);
+        cb.onchange = function () { var a = state[c[0]], i = a.indexOf(n); if (cb.checked && i === -1) a.push(n); else if (!cb.checked && i !== -1) a.splice(i, 1); drawSidebar(); };
+        td.appendChild(cb); tr.appendChild(td);
+      });
+      t.appendChild(tr);
+    });
+    return t;
+  }
+
+  // ---------- Roster and lists screen ----------
+  function openRoster() { $('settings').hidden = false; $('main').hidden = true; drawRoster(); }
+  function closeRoster() {
+    // Anything shown on the review screen counts as confirmed once the scheduler leaves it.
+    var roles = W.effectiveRoster(sched, S.roles);
+    sched.people.forEach(function (n) { if (!S.roles[n]) S.roles[n] = roles[n]; });
+    save(); checks = W.rosterChecks(sched, S.roles, { mand: S.mand });
+    $('settings').hidden = true; $('main').hidden = false; drawAll();
+  }
+  var ROLE = { ft: 'Full-time', pt: 'Part-time', ignore: 'Not on the lists' };
+  function drawRoster() {
+    var box = $('lists'); box.innerHTML = '';
+    if (checks.length) {
+      var c = el('div', 'listcol checks');
+      c.appendChild(el('h3', null, 'Please check'));
+      var ul = el('ul'); checks.forEach(function (x) { ul.appendChild(el('li', null, x.text)); }); c.appendChild(ul);
+      c.appendChild(el('p', 'hint', 'Change a role below if a guess is wrong. Leaving this screen confirms the rest.'));
+      box.appendChild(c);
+    }
+    var roles = W.effectiveRoster(sched, S.roles);
+    var rc = el('div', 'listcol');
+    rc.appendChild(el('h3', null, 'Who is who'));
+    rc.appendChild(el('p', 'hint', 'Only full-time staff are on the overtime lists. Crews, shifts and Kelly days are read from each schedule, so they never need entering here.'));
+    var tb = el('table', 'roles');
+    var all = sched.people.slice();
+    Object.keys(S.roles).forEach(function (n) { if (all.indexOf(n) === -1) all.push(n); });
+    all.forEach(function (n) {
+      var tr = el('tr'), i = sched.inf.info[n];
+      tr.appendChild(el('td', 'tn', n));
+      var s = el('select'); s.setAttribute('aria-label', 'Role for ' + n);
+      Object.keys(ROLE).forEach(function (k) { var o = el('option', null, ROLE[k]); o.value = k; if ((S.roles[n] || roles[n]) === k) o.selected = true; s.appendChild(o); });
+      s.onchange = function () { S.roles[n] = s.value; save(); checks = W.rosterChecks(sched, S.roles, { mand: S.mand }); drawRoster(); };
+      var td = el('td'); td.appendChild(s); tr.appendChild(td);
+      var detail = i ? i.hoursPer28 + ' hrs / 4 wks' + (i.home ? ', ' + (i.home === 'KELLY' ? 'Kelly crew' : i.home) : '') : 'not on this schedule';
+      tr.appendChild(el('td', 'hint', detail));
+      tb.appendChild(tr);
+    });
+    rc.appendChild(tb); box.appendChild(rc);
+
+    var ft = all.filter(function (n) { return (S.roles[n] || roles[n]) === 'ft'; });
+    var cur = sched.people.filter(function (n) { return roles[n] === 'ft'; });
+    listCol(box, 'seniority', 'Seniority (most senior at the top)', 'From the contract (Article 4). Used to start the overtime lists.', W.orderedNames(S.seniority, ft, function (n) { return S.roles[n] !== 'ignore'; }), cur);
+    listCol(box, 'mand', 'Mandatory Overtime List (next to be mandated at the top)', 'Starts least senior first, then changes by mandates. After someone is mandated or uses their yearly pass, click "To bottom" (not for a mandate of 1 hour or less right next to their own shift). Place a new full-timer where the department says.', W.activeList(S.mand, ft, 'top'), cur);
+    listCol(box, 'vol', 'Voluntary Overtime List (first offered at the top)', 'Starts most senior first; after that, fewest voluntary fill-in overtime hours at the top. Keep it matching the department\'s posted list. Place a new full-timer where the department says.', W.activeList(S.vol, ft, 'bottom'), cur);
+  }
+  function listCol(box, k, title, hint, order, current) {
+    var col = el('div', 'listcol');
+    col.appendChild(el('h3', null, title)); col.appendChild(el('p', 'hint', hint));
+    var ol = el('ol', 'editlist');
+    order.forEach(function (n, i) {
+      var li = el('li'); li.appendChild(el('span', 'ln', n + (current.indexOf(n) === -1 ? ' (not on this schedule; place kept)' : '')));
+      li.appendChild(btn('Up', function () { move(k, order, i, i - 1); }, '', i === 0));
+      li.appendChild(btn('Down', function () { move(k, order, i, i + 1); }, '', i === order.length - 1));
+      if (k !== 'seniority') li.appendChild(btn('To bottom', function () { move(k, order, i, order.length - 1); }, '', i === order.length - 1));
+      ol.appendChild(li);
+    });
+    col.appendChild(ol);
+    if (k === 'seniority') col.appendChild(btn('Restart both overtime lists from this order (as on January 1)', function () {
+      if (!confirm('This replaces the Mandatory and Voluntary lists with fresh lists built from seniority. Continue?')) return;
+      S.seniority = order.slice(); S.mand = order.slice().reverse(); S.vol = order.slice(); S.listsFrom = S.seniority.join('|'); S.listsEdited = false; save(); drawRoster();
+    }, 'wide'));
+    box.appendChild(col);
+  }
+  function move(k, order, from, to) {
+    if (to < 0 || to >= order.length) return;
+    var x = order.splice(from, 1)[0]; order.splice(to, 0, x);
+    S[k] = order.slice(); if (k !== 'seniority') S.listsEdited = true; save(); drawRoster();
+  }
+
+  function drawAll() { drawBanner(); drawCalendar(); drawSidebar(); }
+
+  // ---------- Wiring ----------
+  function shiftMonth(n) { var m = state.month + n; state.year += Math.floor(m / 12); state.month = ((m % 12) + 12) % 12; drawCalendar(); }
+  $('prev').onclick = function () { shiftMonth(-1); };
+  $('next').onclick = function () { shiftMonth(1); };
+  $('openSettings').onclick = function () { if (sched) openRoster(); };
+  $('closeSettings').onclick = closeRoster;
+  ['fileInput', 'fileInput2'].forEach(function (id) { $(id).onchange = function () { if (this.files[0]) readFile(this.files[0]); this.value = ''; }; });
+  $('loadSample').onclick = function () { useSchedule(document.getElementById('sample-ics').textContent, 'Sample schedule (made-up names)', false); };
+  $('resetAll').onclick = function () {
+    if (!confirm('Erase the saved roles, seniority, overtime lists and schedule on this computer?')) return;
+    try { localStorage.removeItem(KEY); localStorage.removeItem(SCHED_KEY); } catch (e) { /* ignore */ }
+    location.reload();
+  };
+  ['dragover', 'drop'].forEach(function (ev) {
+    document.addEventListener(ev, function (e) { e.preventDefault(); if (ev === 'drop' && e.dataTransfer.files[0]) readFile(e.dataTransfer.files[0]); });
+  });
+  var saved = load(SCHED_KEY);
+  if (saved && saved.text) useSchedule(saved.text, saved.label, false);
+  else { $('welcome').hidden = false; $('main').hidden = true; }
+  if (!document.getElementById('sample-ics')) $('loadSample').hidden = true;
+})();
+
+</script>
+</body>
+</html>
