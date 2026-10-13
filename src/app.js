@@ -48,7 +48,7 @@
     }
     var every = sched.people.slice(); sched.work.forEach(function (r) { if (r.forName && every.indexOf(r.forName) === -1) every.push(r.forName); });
     short = makeShort(every);
-    checks = W.rosterChecks(sched, S.roles, { labelsSeen: S.labelsSeen, mand: S.mand });
+    checks = W.rosterChecks(sched, S.roles, { labelsSeen: S.labelsSeen, mand: S.mand, vol: S.vol });
     (sched.notes || []).forEach(function (x) { checks.push({ name: '', kind: 'file', text: 'Schedule file: ' + x }); });
     S.labelsSeen = sched.inf.labelsSeen; save();
     var today = new Date(), ti = today.getFullYear() + '-' + pad(today.getMonth() + 1) + '-' + pad(today.getDate());
@@ -203,9 +203,9 @@
     var cols = [['leave', 'Approved leave'], ['kelly', 'Two Kelly days off'], ['unprot', 'Not protected'], ['ot20', 'Within 24 h of 20+ h voluntary OT'], ['certs', 'Certs lapsed or can\'t drive']];
     var t = el('table', 'ticks'), hr = el('tr'); hr.appendChild(el('th', null, 'Name'));
     cols.forEach(function (c) { hr.appendChild(el('th', null, c[1])); }); t.appendChild(hr);
-    var roles = W.effectiveRoster(sched, S.roles);
-    sched.people.filter(function (n) { return roles[n] !== 'ignore'; }).forEach(function (n) {
-      var tr = el('tr'); tr.appendChild(el('td', 'tn', n));
+    // The same people the engine can offer, including saved full-timers who are not on this schedule.
+    W.candidates(sched, S.roles).forEach(function (n) {
+      var tr = el('tr'); tr.appendChild(el('td', 'tn', n + (sched.people.indexOf(n) === -1 ? ' (not on this schedule)' : '')));
       cols.forEach(function (c) {
         var td = el('td'), cb = el('input'); cb.type = 'checkbox';
         cb.checked = state[c[0]].indexOf(n) !== -1; cb.setAttribute('aria-label', n + ': ' + c[1]);
@@ -223,7 +223,7 @@
     // Anything shown on the review screen counts as confirmed once the scheduler leaves it.
     var roles = W.effectiveRoster(sched, S.roles);
     sched.people.forEach(function (n) { if (!S.roles[n]) S.roles[n] = roles[n]; });
-    save(); checks = W.rosterChecks(sched, S.roles, { mand: S.mand });
+    save(); checks = W.rosterChecks(sched, S.roles, { mand: S.mand, vol: S.vol });
     $('settings').hidden = true; $('main').hidden = false; drawAll();
   }
   var ROLE = { ft: 'Full-time', pt: 'Part-time', ignore: 'Not on the lists' };
@@ -248,7 +248,7 @@
       tr.appendChild(el('td', 'tn', n));
       var s = el('select'); s.setAttribute('aria-label', 'Role for ' + n);
       Object.keys(ROLE).forEach(function (k) { var o = el('option', null, ROLE[k]); o.value = k; if ((S.roles[n] || roles[n]) === k) o.selected = true; s.appendChild(o); });
-      s.onchange = function () { S.roles[n] = s.value; save(); checks = W.rosterChecks(sched, S.roles, { mand: S.mand }); drawRoster(); };
+      s.onchange = function () { S.roles[n] = s.value; save(); checks = W.rosterChecks(sched, S.roles, { mand: S.mand, vol: S.vol }); drawRoster(); };
       var td = el('td'); td.appendChild(s); tr.appendChild(td);
       var detail = i ? i.hoursPer28 + ' hrs / 4 wks' + (i.home ? ', ' + (i.home === 'KELLY' ? 'Kelly crew' : i.home) : '') : 'not on this schedule';
       tr.appendChild(el('td', 'hint', detail));

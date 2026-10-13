@@ -177,22 +177,44 @@
     if (t < o1) out.push([t, o1]);
     return out;
   }
-  // X3: length of the work stretch containing [a,b); breaks under 24 hours don't reset it.
-  function stretch(shifts, a, b) {
-    var blocks = merge(ivs(shifts).concat([[a, b]]), DAY);
+  // Block (breaks under 24 hours don't reset it) of work-interval pairs `iv` that holds [a,b), as a length.
+  function blockLen(iv, a, b) {
+    var blocks = merge(iv.concat([[a, b]]), DAY);
     for (var j = 0; j < blocks.length; j++) if (blocks[j][0] <= a && blocks[j][1] >= b) return blocks[j][1] - blocks[j][0];
     return b - a;
   }
-  // Longest legal start and end pieces of [a,b) under the 96-hour limit (F05: keep partial availability).
-  function legalPieces(shifts, a, b) {
-    if (stretch(shifts, a, b) <= 96 * HOUR) return { full: true, pieces: [[a, b]] };
-    var front = 0, back = 0, step = 15;
-    for (var x = step; x < b - a; x += step) { if (stretch(shifts, a, a + x) <= 96 * HOUR) front = x; else break; }
-    for (var y = step; y < b - a; y += step) { if (stretch(shifts, b - y, b) <= 96 * HOUR) back = y; else break; }
-    var p = [];
-    if (front > 0) p.push([a, a + front]);
-    if (back > 0 && (!front || b - back > a + front)) p.push([b - back, b]);
-    return { full: false, pieces: p };
+  /* The hours of the free parts of an opening that this person may legally work under the 96-hour limit
+     (SOG 100.17.03), as one set that is safe TOGETHER (RR02, RR03). Whole free parts are used when they pass.
+     Otherwise the opening is walked in 15-minute pieces (then 1-minute ones at the edge), taking a piece only
+     if the block it joins, with every piece already taken, stays within 96 hours. The walk is tried from the
+     opening's start and from each point a full 24-hour rest after existing work, and the most hours wins
+     (earliest on a tie), so an interior legal stretch is found when both ends are blocked. */
+  function legalSet(shifts, free) {
+    var LIM = 96 * HOUR, STEP = 15, base = ivs(shifts);
+    var all = merge(base.concat(free), DAY);
+    var whole = free.every(function (p) { return all.some(function (b) { return b[0] <= p[0] && b[1] >= p[1] && b[1] - b[0] <= LIM; }); });
+    if (whole) return { full: true, pieces: free.map(function (p) { return [p[0], p[1]]; }) };
+    var lo = free[0][0], hi = free[free.length - 1][1], starts = {};
+    starts[lo] = 1; free.forEach(function (p) { starts[p[0]] = 1; });
+    merge(base).forEach(function (x) { var s = x[1] + DAY; if (s > lo && s < hi) starts[s] = 1; });
+    var best = null, bestTot = -1;
+    Object.keys(starts).map(Number).sort(function (a, b) { return a - b; }).forEach(function (s) {
+      var work = base.slice(), got = [];
+      function fits(t0, t1) { return blockLen(work, t0, t1) <= LIM; }
+      function take(t0, t1) { work.push([t0, t1]); got.push([t0, t1]); }
+      free.forEach(function (p) {
+        var t = Math.max(p[0], s);
+        while (t < p[1]) {
+          var c1 = Math.min(t + STEP, p[1]);
+          if (fits(t, c1)) take(t, c1);
+          else if (fits(t, t + 1)) { for (var m = c1 - t - 1; m >= 1; m--) if (fits(t, t + m)) { take(t, t + m); break; } }
+          t = c1;
+        }
+      });
+      var tot = total(got);
+      if (tot > bestTot) { best = got; bestTot = tot; }
+    });
+    return { full: false, pieces: merge(best || [], 0.5) };
   }
   // X7: windows of 24 hours before and after any three shift days in a row with 12+ hours each.
   function threeDayWindows(shifts, o0, o1) {
@@ -312,6 +334,15 @@
   function total(p) { return p.reduce(function (s, x) { return s + x[1] - x[0]; }, 0); }
   function spans(p) { return p.map(function (x) { return fmtT(x[0]) + ' to ' + fmtT(x[1]); }).join(' and '); }
 
+  /* Everyone who can be offered an opening: the loaded schedule's people plus saved full-timers who are not in it
+     (they carry a warning), minus anyone set to "Not on the lists". The tick-box table uses the same list (RR01). */
+  function candidates(sc, saved, roster) {
+    roster = roster || effectiveRoster(sc, saved);
+    var people = sc.people.slice();
+    Object.keys(saved || {}).forEach(function (n) { if (saved[n] === 'ft' && people.indexOf(n) === -1) people.push(n); });
+    return people.filter(function (n) { return roster[n] !== 'ignore'; });
+  }
+
   /* opts: {sched, entry (a work record), from, to (optional: the real vacancy inside or around the entry),
             notice, reason, roster {name: 'ft'|'pt'|'ignore'}, mandList, volList,
             leave, kelly, unprot, ot20, certs: arrays of names} */
@@ -322,9 +353,7 @@
     if (reason === 'blackout') reason = 'leave'; // old name for holiday leave
     var inf = sc.inf || infer(sc), roster = effectiveRoster(sc, opts.roster);
     var leave = opts.leave || [], kelly = opts.kelly || [], unprot = opts.unprot || [], ot20 = opts.ot20 || [], certs = opts.certs || [];
-    var people = sc.people.slice();
-    Object.keys(opts.roster || {}).forEach(function (n) { if (opts.roster[n] === 'ft' && people.indexOf(n) === -1) people.push(n); });
-    people = people.filter(function (n) { return roster[n] !== 'ignore'; });
+    var people = candidates(sc, opts.roster, roster);
     var ft = people.filter(function (n) { return roster[n] === 'ft'; });
     var mandList = activeList(opts.mandList, ft, 'top'), volList = activeList(opts.volList, ft, 'bottom');
     var holiday = holidayName(shiftDayOf(o0));
@@ -343,21 +372,19 @@
     var volOnly = reason === 'short' || reason === 'late' || (reason === 'leave' && !!holiday);
     var avail = [], volunteers = [];
     people.forEach(function (n) {
-      var shifts = sc.ownShifts(n), noCall = [], noMand = [], notes = [];
+      var shifts = sc.ownShifts(n), noCall = [], noMand = [], notes = [], spn = [];
       if (n === caller) { res.noCall.push({ name: n, reasons: ['Called out for this opening.'] }); return; }
       var free = freeParts(shifts, o0, o1);
       if (!free.length) { res.noCall.push({ name: n, reasons: ['Already on the ambulance for this whole opening (SOG 100.17.11(1)).'] }); return; }
-      if (total(free) < o1 - o0) notes.push('Already working ' + hours(o1 - o0 - total(free)) + ' of this opening; could cover ' + spans(free) + '.');
-      var legal = [];
-      free.forEach(function (p) { legal = legal.concat(legalPieces(shifts, p[0], p[1]).pieces); });
-      legal = merge(legal);
-      if (!legal.length) noCall.push('Any of this opening would put them over 96 hours without a 24-hour break (SOG 100.17.03).');
-      else if (total(legal) < total(free)) notes.push('Only ' + spans(legal) + ' is within the 96-hour limit (SOG 100.17.03).');
+      if (total(free) < o1 - o0) spn.push('Already working ' + hours(o1 - o0 - total(free)) + ' of this opening; could cover ' + spans(free) + '.');
+      var legal = merge(legalSet(shifts, free).pieces);
+      if (!legal.length) noCall.push('No part of this opening can be worked without going over 96 hours in a row without a 24-hour break (SOG 100.17.03).');
+      else if (total(legal) < total(free)) spn.push('Only ' + spans(legal) + ' is within the 96-hour limit (SOG 100.17.03).');
       if (certs.indexOf(n) !== -1) noCall.push('Marked as not current on certifications or not cleared to drive (SOG 100.17.06).');
       if (sc.people.indexOf(n) === -1) notes.push('Not on the loaded schedule at all. Make sure they are not on leave before calling.');
       var traded = sc.work.filter(function (r) { return r.forName === n && r.name !== n && overlap(r.start, r.end, o0 - DAY, o1 + DAY); });
       if (traded.length) notes.push('Traded time near this opening to ' + traded[0].name + '. A trade is not approved leave, so it gives no mandate protection (CBA 7.7).');
-      if (noCall.length) { res.noCall.push({ name: n, reasons: noCall.concat(notes) }); return; }
+      if (noCall.length) { res.noCall.push({ name: n, reasons: noCall.concat(spn, notes) }); return; }
 
       // Mandate protection, as time windows.
       var prot = [], why = [];
@@ -378,24 +405,28 @@
         if (overlap(w.from, w.to, o0, o1)) { prot.push([w.from, w.to]); why.push('Scheduled 12+ hours on three days in a row (' + w.text + '); protected for the 24 hours next to them (SOG 100.17.11(4)).'); }
       });
       var mand = minus(legal, merge(prot));
-      if (notes.length) res.notes[n] = notes;
-      res.hoursFor[n] = { legal: legal, mand: mand };
+      res.notes[n] = spn.concat(notes);
+      res.hoursFor[n] = { free: free, legal: legal, mand: mand, why: uniq(why), gen: notes };
       volunteers.push(n);
-      if (!mand.length) res.noMandate.push({ name: n, reasons: uniq(why).concat(notes) });
-      else {
-        if (total(mand) < total(legal)) notes.push('Can be mandated only for ' + spans(mand) + '. ' + uniq(why).join(' '));
-        if (notes.length) res.notes[n] = notes;
-        avail.push(n);
-      }
+      if (!mand.length) res.noMandate.push({ name: n, reasons: uniq(why).concat(spn, notes) });
+      else avail.push(n);
     });
 
-    function line(n, which, list) {
-      var h = res.hoursFor[n], extra = [];
-      if (h && total(h.mand) < o1 - o0) extra.push('Mandate for: ' + spans(h.mand) + '.');
-      return { name: n, why: '#' + (list.indexOf(n) + 1) + ' on the ' + which + ' Overtime List', notes: extra.concat(res.notes[n] || []) };
+    /* One row for a call list. w0 and w1 are the hours this group is about, so every span shown is clipped to
+       them (RR04). A volunteer row shows the legal hours; a mandate row shows the mandatable hours. */
+    function line(n, which, list, w0, w1, vol) {
+      var h = res.hoursFor[n], extra = [], win = [[w0, w1]], whole = w0 === o0 && w1 === o1;
+      var fc = intersect(h.free, win), lc = intersect(h.legal, win), mc = intersect(h.mand, win), len = w1 - w0;
+      if (total(fc) < len) extra.push('Already working ' + hours(len - total(fc)) + ' of ' + (whole ? 'this opening' : 'this part of the opening') + '; could cover ' + (fc.length ? spans(fc) : 'none of it') + '.');
+      if (vol) { if (total(lc) < len) extra.push('Can volunteer for: ' + (lc.length ? spans(lc) : 'none of it') + '.'); }
+      else {
+        if (total(lc) < total(fc)) extra.push('Only ' + spans(lc) + ' is within the 96-hour limit (SOG 100.17.03).');
+        if (total(mc) < len) extra.push('Mandate for: ' + (mc.length ? spans(mc) : 'none of it') + '.' + (total(mc) < total(lc) ? ' ' + h.why.join(' ') : ''));
+      }
+      return { name: n, why: '#' + (list.indexOf(n) + 1) + ' on the ' + which + ' Overtime List', notes: extra.concat(h.gen) };
     }
-    function inOrder(subset, list, which) {
-      return list.filter(function (n) { return subset.indexOf(n) !== -1; }).map(function (n) { return line(n, which, list); });
+    function inOrder(subset, list, which, w0, w1, vol) {
+      return list.filter(function (n) { return subset.indexOf(n) !== -1; }).map(function (n) { return line(n, which, list, w0 == null ? o0 : w0, w1 == null ? o1 : w1, vol); });
     }
     var passStep = 'A person being mandated may use their one pass for the year, said out loud to the person issuing the mandate at the time. They go to the bottom of the Mandatory list, the pass is dated on the posted list and emailed to them, and you move to the next name (SOG 100.17.13).';
     var listStep = 'After someone is mandated, move them to the bottom of the Mandatory list. Exception: a mandate of 1 hour or less right next to hours they are already working does not count (SOG 100.17.08).';
@@ -421,13 +452,13 @@
       res.steps.push(passStep); res.steps.push(listStep);
       var offer = volList.filter(function (n) { return volunteers.indexOf(n) !== -1; });
       res.groups.push({ title: 'Step A. Offer to full-time volunteers in this order', note: 'Voluntary Overtime List order (fewest voluntary overtime hours first). Protected people may still volunteer.', volunteer: true,
-        people: offer.map(function (n) { return line(n, 'Voluntary', volList); }) });
+        people: offer.map(function (n) { return line(n, 'Voluntary', volList, o0, o1, true); }) });
       res.groups.push({ title: 'Step B. If nobody volunteers, mandate in this order', note: 'Top-most eligible person for as many hours as allowed, then the next for what is left (SOG 100.17.10).', people: inOrder(avail, mandList, 'Mandatory') });
       return res;
     }
 
     res.steps.push('Management has first right to take a short-notice opening, before anyone is notified (SOG 100.17B.06).');
-    res.steps.push('Post it in the scheduling software and wait at least ' + (notice === 'lt24' ? '1 hour' : '4 hours') + ' for a volunteer. The Chief may shorten the wait, but not arbitrarily (SOG 100.17B.04).');
+    res.steps.push('Post it in the scheduling software and wait at least ' + (notice === 'lt24' ? '1 hour' : '4 hours') + ' for a volunteer.' + (notice === '72toRot' ? '' : ' The Chief may shorten the wait, but not arbitrarily (SOG 100.17B.04).'));
     if (notice !== '72toRot') res.steps.push('With under 72 hours of notice, a full-timer who volunteers for the whole opening or at least 12 hours of it goes to the bottom of the Mandatory list, and the hours count as mandated. If they take over someone else\'s mandate, the original person goes back to their old spot (SOG 100.17B.04).');
     if (notice === '72toRot') res.steps.push('Mandate by email and phone call; leave a voicemail if they don\'t answer, or tell them face to face if they are on duty (still send the email). Every notice must go out at least 60 hours before the opening (SOG 100.17B.04).');
     if (notice === '24to72') res.steps.push('Mandate by phone call (a text only in addition). If the person does not answer the first call, leave a voicemail and move to the next person. You must actually speak to the person mandated, then email them before the hours start (SOG 100.17B.04).');
@@ -442,13 +473,13 @@
         return n !== caller && sc.ownShifts(n).some(function (r) { return r.start < o0 && r.end >= o0; }) && coveredIv(res.hoursFor[n].mand, o0, cut) > 0;
       });
       if (hold.length) res.groups.push({ title: 'Mandate first: on duty when the opening starts (' + fmtT(o0) + ')',
-        note: 'They are working right up to the opening. For the first 24 hours, the top-most of them on the Mandatory list is mandated first (SOG 100.17B.04).', people: inOrder(hold, mandList, 'Mandatory') });
+        note: 'They are working right up to the opening. For the first 24 hours, the top-most of them on the Mandatory list is mandated first (SOG 100.17B.04).', people: inOrder(hold, mandList, 'Mandatory', o0, cut) });
       var rest = avail.filter(function (n) { return hold.indexOf(n) === -1; });
       res.groups.push({ title: 'If that doesn\'t cover the first 24 hours: management\'s decision', discretion: true,
         note: 'The SOG does not say who is mandated when nobody on duty can cover it. This is the Mandatory list order, as one option for management to decide on (SOG 100.17B.04, 100.17B.05, 100.17B.07; RULES.md rule M2).',
-        people: inOrder(rest.filter(function (n) { return coveredIv(res.hoursFor[n].mand, o0, cut) > 0; }), mandList, 'Mandatory') });
+        people: inOrder(rest.filter(function (n) { return coveredIv(res.hoursFor[n].mand, o0, cut) > 0; }), mandList, 'Mandatory', o0, cut) });
       if (o1 > cut) res.groups.push({ title: 'Hours after ' + fmtT(cut) + ': mandate in this order', note: 'Past the first 24 hours, the 24-to-72-hour process applies to the rest (SOG 100.17B.04).',
-        people: inOrder(avail.filter(function (n) { return coveredIv(res.hoursFor[n].mand, cut, o1) > 0; }), mandList, 'Mandatory') });
+        people: inOrder(avail.filter(function (n) { return coveredIv(res.hoursFor[n].mand, cut, o1) > 0; }), mandList, 'Mandatory', cut, o1) });
       if (!hold.length) res.warnings.push('Nobody on duty right before ' + fmtT(o0) + ' can be mandated, and the SOG doesn\'t say what happens next. The list below is shown as management\'s decision, not a rule.');
     } else {
       res.groups.push({ title: 'Mandate in this order', note: 'Top-most eligible person on the Mandatory Overtime List for as many hours as allowed, then the next for what is left (SOG 100.17B.04).', people: inOrder(avail, mandList, 'Mandatory') });
@@ -476,7 +507,10 @@
     });
     Object.keys(saved).forEach(function (n) {
       if (saved[n] === 'ft' && sc.people.indexOf(n) === -1) out.push({ name: n, kind: 'missing', text: n + ' is not on this schedule. They are still offered in the call lists with a warning. If they left, set them to "Not on the lists"; if they are on leave, tick it when you handle an opening.' });
-      if (saved[n] === 'ft' && lists.mand && lists.mand.length && lists.mand.indexOf(n) === -1) out.push({ name: n, kind: 'list', text: n + ' is full-time but not on the saved overtime lists yet. Until you place them, they sit at the top of the Mandatory list and the bottom of the Voluntary list. Move them to the right spots.' });
+      [['mand', 'Mandatory', 'top of'], ['vol', 'Voluntary', 'bottom of']].forEach(function (L) {
+        if (saved[n] === 'ft' && lists[L[0]] && lists[L[0]].length && lists[L[0]].indexOf(n) === -1)
+          out.push({ name: n, kind: 'list', list: L[0], text: n + ' is full-time but not on the saved ' + L[1] + ' Overtime List yet. Until you place them, they sit at the ' + L[2] + ' that list. Move them to the right spot.' });
+      });
     });
     if (lists.labelsSeen && inf.labelsSeen.length && inf.labelsSeen.join() !== lists.labelsSeen.join())
       out.push({ name: '', kind: 'rotation', text: 'The shift labels changed (was ' + lists.labelsSeen.join(', ') + ', now ' + inf.labelsSeen.join(', ') + '). Crews and Kelly days are read fresh from each schedule, but check the call lists look right.' });
@@ -490,7 +524,7 @@
     return base.filter(function (n) { return ft.indexOf(n) !== -1; });
   }
 
-  var api = { infer: infer, withInference: withInference, effectiveRoster: effectiveRoster, rosterChecks: rosterChecks, activeList: activeList,
+  var api = { infer: infer, withInference: withInference, effectiveRoster: effectiveRoster, rosterChecks: rosterChecks, activeList: activeList, candidates: candidates,
     importICS: importICS, makeSchedule: makeSchedule, computeCallout: computeCallout, orderedNames: orderedNames,
     holidayName: holidayName, NOTICE: NOTICE, REASONS: REASONS, fmt: fmt, fmtT: fmtT, hhmm: hhmm, shortSpan: shortSpan, addDays: addDays,
     isoOf: isoOf, shiftDayOf: shiftDayOf, shiftStart: shiftStart, wall: wall, HOUR: HOUR, DAY: DAY, DEPT_TZ: DEPT_TZ };

@@ -271,7 +271,98 @@ octKelly(path.join(root, 'sample', 'sample-schedule.ics'), path.join(root, 'samp
     ev('Cal', day(10) + 'T080000', day(11) + 'T080000', { UID: 'x1', STATUS: 'CANCELLED' })]);
   var r9 = W.computeCallout({ sched: s9, entry: annEntry(s9), roster: FT, notice: '24to72' });
   ok(!has(r9.noCall, 'Bob') && s9.work.length === 2, 'F11: duplicate counted once, cancelled entry ignored');
+
+  // ---- Re-review (Astra, second pass): RR01 to RR06 ----
+  function rowOf(r, title, name) { var g = r.groups.filter(function (x) { return title.test(x.title); })[0]; return g ? g.people.filter(function (p) { return p.name === name; })[0] : null; }
+  function jointOk(shifts, pieces) { // every work block (breaks under 24 h join) stays within 96 hours once the pieces are added
+    var iv = shifts.map(function (r) { return [r.start, r.end]; }).concat(pieces).sort(function (a, b) { return a[0] - b[0]; }), blocks = [];
+    iv.forEach(function (x) { var l = blocks[blocks.length - 1]; if (l && x[0] - l[1] < 1440) l[1] = Math.max(l[1], x[1]); else blocks.push([x[0], x[1]]); });
+    return blocks.every(function (b) { return b[1] - b[0] <= 96 * 60; });
+  }
+
+  // RR02: both ends are constrained, but a legal piece sits in the middle.
+  var sr2 = build([ev('Ann', day(10) + 'T080000', day(13) + 'T080000'), ev('Bob', day(6) + 'T080000', day(10) + 'T080000'), ev('Bob', day(13) + 'T080000', day(17) + 'T080000')]);
+  var rr2 = W.computeCallout({ sched: sr2, entry: annEntry(sr2), roster: FT, notice: '24to72' });
+  var mid = rr2.hoursFor.Bob && rr2.hoursFor.Bob.legal;
+  ok(!has(rr2.noCall, 'Bob') && mid && mid.length === 1 && mid[0][0] === W.wall(2026, 11, 11, 8) && mid[0][1] === W.wall(2026, 11, 12, 8), 'RR02: the legal middle piece is found (' + JSON.stringify(mid) + ')');
+  ok(rr2.noMandate.concat(rr2.groups[0].people).some(function (p) { return p.name === 'Bob'; }), 'RR02: Bob is still on a list, not silently dropped');
+  // RR02: a few minutes of capacity left is still capacity (the source sets no 15-minute minimum).
+  var srTiny = build([ev('Ann', day(10) + 'T080000', day(11) + 'T080000'), ev('Bob', day(6) + 'T081000', day(10) + 'T080000')]); // 95 h 50 min before
+  var rTiny = W.computeCallout({ sched: srTiny, entry: annEntry(srTiny), roster: FT, notice: '24to72' });
+  var tiny10 = rTiny.hoursFor.Bob && rTiny.hoursFor.Bob.legal;
+  ok(tiny10 && tiny10.length === 1 && tiny10[0][1] - tiny10[0][0] === 10, 'RR02: 10 minutes of remaining capacity is kept as exactly 10 minutes (' + JSON.stringify(tiny10) + ')');
+
+  // RR03: a prefix and a suffix that are each legal alone must also be legal together.
+  var sr3 = build([ev('Ann', day(10) + 'T080000', day(12) + 'T080000'), ev('Bob', day(6) + 'T140000', day(10) + 'T080000')]); // 90 h before
+  var rr3 = W.computeCallout({ sched: sr3, entry: annEntry(sr3), roster: FT, notice: '24to72' });
+  var pieces3 = rr3.hoursFor.Bob.legal;
+  ok(pieces3.length >= 1 && jointOk(sr3.ownShifts('Bob'), pieces3), 'RR03: every offered piece set passes the 96-hour check together (' + JSON.stringify(pieces3.map(function (p) { return (p[1] - p[0]) / 60; })) + ' h)');
+  ok(pieces3.reduce(function (s, p) { return s + p[1] - p[0]; }, 0) >= 6 * 60, 'RR03: the safe prefix is still offered');
+
+  // RR04: each group's rows only talk about that group's hours.
+  var sr4 = build([ev('Ann', day(10) + 'T080000', day(12) + 'T080000'), ev('Bob', day(11) + 'T120000', day(12) + 'T080000'), ev('Cal', day(9) + 'T080000', day(10) + 'T080000')]);
+  var rr4 = W.computeCallout({ sched: sr4, entry: annEntry(sr4), roster: FT, notice: 'lt24' });
+  var bobFirst = rowOf(rr4, /management/, 'Bob'), bobAfter = rowOf(rr4, /Hours after/, 'Bob');
+  ok(bobFirst && !/Mandate for/.test(bobFirst.notes.join(' ')), 'RR04: first-24-hour row has no span reaching past the cutoff (' + (bobFirst ? bobFirst.notes.join(' | ') : 'missing') + ')');
+  ok(bobAfter && bobAfter.notes.join(' ').indexOf('Mandate for: Wed Nov 11 08:00 to Wed Nov 11 12:00.') !== -1 && !/Nov 10/.test(bobAfter.notes.join(' ')), 'RR04: later row shows only its own hours (' + (bobAfter ? bobAfter.notes.join(' | ') : 'missing') + ')');
+  // RR04: volunteer rows use volunteer-safe hours, not the mandate span.
+  var sr4b = build([ev('Ann', day(10) + 'T080000', day(12) + 'T080000'), ev('Bob', day(11) + 'T120000', day(12) + 'T080000')].concat([7, 8, 9].map(function (d) { return ev('Bob', day(d) + 'T080000', day(d) + 'T200000'); })));
+  var rr4b = W.computeCallout({ sched: sr4b, entry: annEntry(sr4b), roster: FT, notice: 'gtRot', volList: ['Bob', 'Ann'] });
+  var bobVol = rowOf(rr4b, /Step A/, 'Bob');
+  ok(bobVol && !/Mandate for/.test(bobVol.notes.join(' ')) && /Can volunteer for: Tue Nov 10 20:00 to Wed Nov 11 12:00/.test(bobVol.notes.join(' ')) && jointOk(sr4b.ownShifts('Bob'), [[W.wall(2026, 11, 10, 20), W.wall(2026, 11, 11, 12)]]), 'RR04: volunteer row shows legal volunteer hours (' + (bobVol ? bobVol.notes.join(' | ') : 'missing') + ')');
+
+  // RR05: both overtime lists are checked, each on its own.
+  var lists = function (m, v) { return W.rosterChecks(s1, { Ann: 'ft', Bob: 'ft' }, { mand: m, vol: v }).filter(function (c) { return c.kind === 'list'; }); };
+  ok(lists(['Ann', 'Bob'], ['Ann']).length === 1 && /Voluntary/.test(lists(['Ann', 'Bob'], ['Ann'])[0].text), 'RR05: placed on Mandatory but missing from Voluntary still warns');
+  ok(lists(['Ann'], ['Ann', 'Bob']).length === 1 && /Mandatory/.test(lists(['Ann'], ['Ann', 'Bob'])[0].text), 'RR05: missing from Mandatory only warns about Mandatory');
+  ok(lists(['Ann'], ['Ann']).length === 2 && lists(['Ann', 'Bob'], ['Ann', 'Bob']).length === 0, 'RR05: warns for both lists, and clears once both hold the name');
+
+  // RR06: the Chief may shorten the wait only in the 24-72 h and under-24 h paragraphs.
+  ['lt24', '24to72', '72toRot'].forEach(function (nt) {
+    var st = W.computeCallout({ sched: s1, entry: annEntry(s1), roster: FT, notice: nt }).steps.join(' ');
+    ok(/Chief may shorten/.test(st) === (nt !== '72toRot'), 'RR06: shorten-the-wait line ' + (nt === '72toRot' ? 'absent' : 'present') + ' for ' + nt);
+  });
+
+  // RR01: a saved full-timer who is missing from the loaded schedule has a row in the tick table, and the boxes work.
+  var app = loadApp({ roles: { Ann: 'ft', Bob: 'ft', Zed: 'ft' }, seniority: [], mand: [], vol: [] }, [ev('Ann', day(9) + 'T080000', day(10) + 'T080000'), ev('Bob', day(10) + 'T080000', day(11) + 'T080000')]);
+  app.click(function (b) { return b.className === 'name'; });
+  ok(!!app.find(function (e) { return e.attrs && e.attrs['aria-label'] === 'Zed: Approved leave'; }), 'RR01: missing saved full-timer has an Approved leave box');
+  ok(!!app.find(function (e) { return e.attrs && e.attrs['aria-label'] === 'Zed: Certs lapsed or can\'t drive'; }), 'RR01: ... and a certifications box');
+  app.tick('Zed: Approved leave');
+  ok(/Zed/.test(app.sectionText('Do NOT mandate')), 'RR01: ticking leave for the missing person moves them to Do NOT mandate');
+  app.tick('Zed: Approved leave'); app.tick('Zed: Certs lapsed or can\'t drive');
+  ok(/Zed/.test(app.sectionText('Do NOT call')), 'RR01: ticking certs for the missing person moves them to Do NOT call');
+  // RR05 through the real roster screen: Mandatory holds the new name, Voluntary does not.
+  var app2 = loadApp({ roles: { Ann: 'ft', Bob: 'ft' }, seniority: ['Ann', 'Bob'], mand: ['Ann', 'Bob'], vol: ['Ann'] }, [ev('Ann', day(9) + 'T080000', day(10) + 'T080000'), ev('Bob', day(10) + 'T080000', day(11) + 'T080000')]);
+  ok(/Voluntary/.test(app2.text('lists')) || /Voluntary/.test(app2.text('banner')) || app2.checkTexts().some(function (t) { return /Voluntary/.test(t); }), 'RR05: the app passes both lists, so a Voluntary gap shows on the review screen (' + app2.checkTexts().join(' | ') + ')');
 })();
+
+// A tiny fake page so the real src/app.js can run under Node and its handlers can be clicked.
+function loadApp(saved, events) {
+  var vm = require('vm'), ids = {};
+  function El(tag) { this.tag = tag; this.children = []; this.attrs = {}; this.className = ''; this.hidden = false; this.textContent = ''; this.value = ''; this.checked = false; this.classList = { add: function () {}, remove: function () {} }; this.style = {}; }
+  El.prototype.appendChild = function (c) { this.children.push(c); return c; };
+  El.prototype.setAttribute = function (k, v) { this.attrs[k] = v; };
+  Object.defineProperty(El.prototype, 'innerHTML', { get: function () { return ''; }, set: function () { this.children = []; } });
+  function id(n) { return ids[n] || (ids[n] = new El(n)); }
+  var store = { 'callout-helper-settings-v2': JSON.stringify(saved), 'callout-helper-schedule-v2': JSON.stringify({ label: 'test', text: ics(events) }) };
+  var ctx = { window: { CalloutEngine: W }, document: { getElementById: id, createElement: function (t) { return new El(t); }, addEventListener: function () {} },
+    localStorage: { getItem: function (k) { return store[k] || null; }, setItem: function (k, v) { store[k] = v; } }, confirm: function () { return true; }, alert: function () {}, location: { reload: function () {} }, Date: Date, console: console };
+  vm.runInNewContext(fs.readFileSync(path.join(root, 'src', 'app.js'), 'utf8'), ctx);
+  function walk(e, fn, out) { out = out || []; if (fn(e)) out.push(e); e.children.forEach(function (c) { walk(c, fn, out); }); return out; }
+  function find(fn) { return walk(id('result'), fn)[0]; }
+  function text(e) { var el = typeof e === 'string' ? id(e) : e; return walk(el, function () { return true; }).map(function (x) { return x.textContent; }).join(' '); }
+  return {
+    find: find, text: text,
+    click: function (fn) { walk(id('grid'), function (e) { return e.tag === 'button' && fn(e); })[0].onclick(); },
+    tick: function (label) { var cb = find(function (e) { return e.attrs && e.attrs['aria-label'] === label; }); cb.checked = !cb.checked; cb.onchange(); },
+    sectionText: function (heading) { // text of the list that follows a heading in the sidebar
+      var kids = id('result').children, i = kids.findIndex(function (k) { return k.textContent.indexOf(heading) === 0; });
+      return i < 0 ? '' : text(kids[i + 1]);
+    },
+    checkTexts: function () { id('openSettings').onclick(); var box = id('lists').children[0]; return box && /checks/.test(box.className) ? walk(box, function (e) { return e.tag === 'li'; }).map(text) : []; }
+  };
+}
 
 var priv = path.join(root, 'private');
 if (fs.existsSync(path.join(priv, 'expected.json'))) {

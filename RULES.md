@@ -55,7 +55,7 @@ Clicking a name on the calendar picks that entry. The opening starts as that ent
 Limits and fine print shown in the tool:
 - **Only two people at a time may be exempt for approved leave** (SOG 100.17.12, lines 1408-1411). If more than two are ticked, the tool warns, and the scheduler ticks "Not protected" for whoever the Chief names. It doesn't pick for the Chief. Kelly-day exemptions (X5) don't count toward the two (lines 1413-1414). That line cites "100.17.12(2)(b)", which looks like a typo for 100.17.11(2)(b).
 - **Shift swaps are not approved leave** for mandate protection (CBA 7.7, lines 667-669).
-- **Leave of less than 12 hours is not approved leave** for mandate protection (CBA 10.2, lines 806-808).
+- **A vacation request of less than 12 hours is not approved leave** for mandate protection (CBA 10.2, lines 806-808). This is about vacation requests only, not sick or emergency leave.
 - SOG 100.17.12 was due for joint review by 8/31/2025 and is removed if both sides didn't approve it (lines 1443-1446). The tool keeps it, since it's still in the April 2026 SOG, but notes this.
 
 ## What the schedule can't tell the tool (shown as notes or tick boxes)
@@ -76,9 +76,9 @@ The schedule (an iCal file from Aladtec) is the only source of truth. The tool n
 | --- | --- |
 | Two people trade shifts | Reads the trade from the entry. The worker counts as working, the original owner counts as off but not protected (CBA 7.7). |
 | Someone switches crews or shift letters | Their home shift is the letter they own most hours on in the loaded schedule. Nothing to re-enter. |
-| New hire | Shows up as "new". Role is guessed from hours (120+ hours per 4 weeks means full-time), and the scheduler confirms once. A new full-timer joins the Mandatory list at the top and the Voluntary list at the bottom, because they're the least senior (SOG 100.17.08). |
+| New hire | Shows up as "new". Role is guessed from hours (120+ hours per 4 weeks means full-time), and the scheduler confirms once. A new full-timer is placed provisionally (top of the Mandatory list, bottom of the Voluntary list) and flagged on each list that lacks them until the scheduler places them. The Voluntary list is hours-ordered after January, so the bottom is not necessarily right (SOG 100.17.08). |
 | Full-time to part-time, or back | Their role setting decides. If the hours stop matching (full-time under 40 a month, or part-time over 160), the tool flags it for a one-click change. |
-| Someone leaves, or is on long leave | Their list places are kept and they're skipped while they're not on the schedule. The tool asks whether they left. |
+| Someone leaves, or is on long leave | Their list places are kept. A saved full-timer who is missing from the schedule is still offered in the call lists with a warning, and has tick-box rows like everyone else, so leave or lapsed certifications can be marked. The tool asks whether they left. |
 | The Chief changes the rotation (CBA 7.2) | Home shifts and Kelly days are re-read from the new schedule. If the shift labels change (for example A/B/C becomes Red/Gold/Black), the tool says so and asks for a quick check. |
 | No shift labels in the feed | Kelly days can't be read, so the tool says so and the scheduler uses the Kelly tick box. |
 
@@ -103,6 +103,11 @@ Checked on the October 2026 schedule: the 2027 Master Calendar's 168-day Kelly c
 | F10 | UTC and other time zones are converted to Chicago time, not the viewer's computer time. |
 | F11 | Overlaps are counted once. Exact duplicates, cancelled entries and older versions of an entry are dropped, and the file notes say so. |
 | F12 | Added: the 12-hour part-time posting window, notification methods per notice level, the 60-hour notice deadline, the Chief's power to shorten waits, the pass procedure at every notice level, and the mid-shift note. |
+| RR01 | The tick-box table now uses the same people as the engine (`candidates`), so a saved full-timer missing from the file has leave, Kelly, cert and other rows. |
+| RR02, RR03 | Legal hours under the 96-hour limit come from one search (`legalSet`) that tries the opening in 15-minute pieces from the start and from each point 24 hours after existing work, taking a piece only if the block it joins, together with all pieces already taken, stays within 96 hours. The most hours wins. So a legal middle portion is found when both ends are blocked, every offered piece set is safe together, and a few minutes of remaining capacity is kept (no 15-minute minimum is in the source). |
+| RR04 | Each call-list group clips every row to its own window (first 24 hours, hours after, or the whole opening). Volunteer rows show "Can volunteer for" (legal hours), not the mandate span. |
+| RR05 | List checks cover both the Mandatory and the Voluntary list, each on its own, and the app passes both. A name placed on one list still warns for the other. |
+| RR06 | "The Chief may shorten the wait" shows only for the 24-to-72-hour and under-24-hour notice levels, where SOG 100.17B.04 says it (the more-than-72-hour paragraph only sets the four-hour minimum). The wait is a manual check; the tool has no clock. Long-notice case-by-case posting exceptions (SOG 100.17.09(7)(a)-(b)) are not modelled. |
 
 Still open, for the department: rule M2 (who is mandated inside 24 h when nobody on duty can cover it), whether break hours count toward the 96-hour limit (the tool counts the whole span), whether SOG 100.17.12 is still in force, and how exactly 24 h or 72 h of notice is classified. Out of scope: monthly bidding and finalization, the special-event list, leave approval and payroll.
 
