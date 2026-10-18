@@ -3082,17 +3082,26 @@ END:VCALENDAR
     if (sched) { drawCalendar(); drawSidebar(); }
   }
   // Opening start/end inputs, in department time (minutes since 1970 as wall clock).
+  // Typing in a date box fires a change after the first digit, and redrawing then throws the cursor away.
+  // So the value is applied when the box loses focus, on Enter, or after a pause.
+  function onCommit(i, apply) {
+    var timer = null, dirty = false;
+    function go() { if (timer) { clearTimeout(timer); timer = null; } if (dirty) { dirty = false; apply(i.value); } }
+    i.onchange = function () { dirty = true; if (timer) clearTimeout(timer); timer = setTimeout(go, 1500); };
+    i.onblur = go;
+    i.onkeydown = function (e) { if (e.key === 'Enter') go(); };
+  }
   function toInput(t) { var d = new Date(t * 60000); return d.toISOString().slice(0, 16); }
   function dateBox(label, value, onchange) {
     var wrap = el('label', 'sel'); wrap.appendChild(el('span', null, label));
-    var i = el('input'); i.type = 'date'; i.value = value || ''; i.onchange = function () { onchange(i.value); };
+    var i = el('input'); i.type = 'date'; i.value = value || ''; onCommit(i, onchange);
     wrap.appendChild(i); return wrap;
   }
   function fromInput(v) { var m = /^(\d{4})-(\d\d)-(\d\d)T(\d\d):(\d\d)$/.exec(v); return m ? W.wall(+m[1], +m[2], +m[3], +m[4], +m[5]) : null; }
   function timeBox(label, value, onchange) {
     var wrap = el('label', 'sel'); wrap.appendChild(el('span', null, label));
     var i = el('input'); i.type = 'datetime-local'; i.value = toInput(value); i.step = 900;
-    i.onchange = function () { var t = fromInput(i.value); if (t != null) onchange(t); };
+    onCommit(i, function (v) { var t = fromInput(v); if (t != null) onchange(t); });
     wrap.appendChild(i); return wrap;
   }
 
