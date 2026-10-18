@@ -30,7 +30,7 @@
     return out;
   }
   function sn(n) { return short[n] || n; }
-  var state = { year: 0, month: 0, pick: null, from: null, to: null, notice: 'lt24', reason: 'sick', leave: [], kelly: [], unprot: [], ot20: [], certs: [] };
+  var state = { mode: 'callout', vac: { person: '', from: null, to: null, submitted: '', type: 'vacation' }, year: 0, month: 0, pick: null, from: null, to: null, notice: 'lt24', reason: 'sick', leave: [], kelly: [], unprot: [], ot20: [], certs: [] };
   var tickOpen = false;
 
   function $(id) { return document.getElementById(id); }
@@ -104,10 +104,11 @@
       var row = el('div', 'entry' + (r.kind === 'slot' ? ' slot' : ''));
       if (r.kind === 'work') {
         var b = el('button', 'name', sn(r.name)); b.type = 'button'; b.title = r.name;
-        b.setAttribute('aria-label', r.name + ' calls out, ' + W.fmtT(r.start) + ' to ' + W.fmtT(r.end));
-        if (state.pick && state.pick.id === r.id) b.classList.add('picked');
+        b.setAttribute('aria-label', r.name + (state.mode === 'vacation' ? ' asks for leave, ' : ' calls out, ') + W.fmtT(r.start) + ' to ' + W.fmtT(r.end));
+        if (state.mode === 'callout' && state.pick && state.pick.id === r.id) b.classList.add('picked');
+        if (state.mode === 'vacation' && state.vac.person === r.name && state.vac.from != null && r.start < state.vac.to && r.end > state.vac.from) b.classList.add('picked');
         if (S.roles[r.name] === 'ignore') b.classList.add('ignored');
-        b.onclick = function () { pick(r); };
+        b.onclick = function () { if (state.mode === 'vacation') pickVacation(r); else pick(r); };
         row.appendChild(b);
       } else row.appendChild(el('span', 'slotname', r.name));
       var t = el('span', 'span', W.shortSpan(r)); row.appendChild(t);
@@ -122,8 +123,27 @@
     clearTicks(); state.pick = r; state.from = r.start; state.to = r.end;
     drawCalendar(); drawSidebar(); $('side').scrollTop = 0;
   }
+  // Vacation mode: a click picks the person and their shift; clicking the same person again stretches the dates to include that shift.
+  function pickVacation(r) {
+    var v = state.vac;
+    if (v.person !== r.name || v.from == null) { clearTicks(); v.person = r.name; v.from = r.start; v.to = r.end; }
+    else { v.from = Math.min(v.from, r.start); v.to = Math.max(v.to, r.end); }
+    drawCalendar(); drawSidebar(); $('side').scrollTop = 0;
+  }
+  function setMode(m) {
+    if (state.mode === m) return;
+    state.mode = m; clearTicks();
+    $('modeCallout').className = 'mode' + (m === 'callout' ? ' on' : ''); $('modeVacation').className = 'mode' + (m === 'vacation' ? ' on' : '');
+    $('modeCallout').setAttribute('aria-pressed', String(m === 'callout')); $('modeVacation').setAttribute('aria-pressed', String(m === 'vacation'));
+    if (sched) { drawCalendar(); drawSidebar(); }
+  }
   // Opening start/end inputs, in department time (minutes since 1970 as wall clock).
   function toInput(t) { var d = new Date(t * 60000); return d.toISOString().slice(0, 16); }
+  function dateBox(label, value, onchange) {
+    var wrap = el('label', 'sel'); wrap.appendChild(el('span', null, label));
+    var i = el('input'); i.type = 'date'; i.value = value || ''; i.onchange = function () { onchange(i.value); };
+    wrap.appendChild(i); return wrap;
+  }
   function fromInput(v) { var m = /^(\d{4})-(\d\d)-(\d\d)T(\d\d):(\d\d)$/.exec(v); return m ? W.wall(+m[1], +m[2], +m[3], +m[4], +m[5]) : null; }
   function timeBox(label, value, onchange) {
     var wrap = el('label', 'sel'); wrap.appendChild(el('span', null, label));
@@ -134,6 +154,7 @@
 
   // ---------- Sidebar ----------
   function drawSidebar() {
+    if (state.mode === 'vacation') { drawVacation(); return; }
     var side = $('result'); side.innerHTML = '';
     if (!state.pick) {
       side.appendChild(el('h2', null, 'Who calls out?'));
@@ -168,9 +189,13 @@
     ticks.appendChild(tickTable());
     side.appendChild(ticks);
 
-    var n = 0;
     side.appendChild(el('h3', 'callhead', 'Call in this order'));
-    if (!listsReady()) side.appendChild(el('div', 'warn', 'Practice only: the seniority and overtime lists have not been set up, so these positions are not real yet. Open "Roster and lists".'));
+    if (!listsReady()) side.appendChild(el('div', 'warn', 'Practice only: the seniority and overtime lists have not been set up, so these positions are not real yet. Open \"Roster and lists\".'));
+    drawGroups(side, r);
+  }
+  // The ordered call groups and the two "do not" lists, shared by callouts and vacation requests.
+  function drawGroups(side, r) {
+    var n = 0;
     r.groups.forEach(function (g) {
       side.appendChild(el('div', 'gtitle' + (g.discretion ? ' discretion' : ''), g.title));
       if (g.note) side.appendChild(el('div', 'gnote', g.note));
@@ -216,6 +241,78 @@
     });
     return t;
   }
+
+
+  // ---------- Vacation requests ----------
+  function isoOfWall(t) { return new Date(t * 60000).toISOString().slice(0, 10); }
+  function drawVacation() {
+    var side = $('result'); side.innerHTML = '';
+    var v = state.vac;
+    side.appendChild(el('h2', null, 'Vacation request'));
+    if (!v.person || v.from == null) {
+      side.appendChild(el('p', 'hint big', 'Click the name of the person asking for time off, on the shift where it starts. Click the same person on a later shift to stretch the dates over it. This side will show whether the leave can be granted and how the opening is filled.'));
+      return;
+    }
+    var r = W.computeVacation({ sched: sched, person: v.person, from: v.from, to: v.to, submitted: v.submitted, type: v.type, roster: S.roles,
+      mandList: listsReady() ? S.mand : null, volList: listsReady() ? S.vol : null, seniority: S.seniority,
+      leave: state.leave, kelly: state.kelly, unprot: state.unprot, ot20: state.ot20, certs: state.certs });
+    side.appendChild(el('div', 'sub', v.person + ', ' + r.range));
+    var opts = el('div', 'opts');
+    opts.appendChild(selectBox('Who asks?', (function () { var o = {}; sched.people.forEach(function (n) { o[n] = n; }); return o; })(), v.person, function (x) { clearTicks(); v.person = x; drawCalendar(); drawSidebar(); }));
+    var times = el('div', 'times');
+    times.appendChild(timeBox('Leave starts', v.from, function (t) { v.from = t; drawCalendar(); drawSidebar(); }));
+    times.appendChild(timeBox('Leave ends', v.to, function (t) { v.to = t; drawCalendar(); drawSidebar(); }));
+    opts.appendChild(times);
+    opts.appendChild(el('div', 'hint', 'Only the person\'s own shifts between these times are covered. Change the times for a partial day.'));
+    opts.appendChild(selectBox('Kind of leave', W.LEAVE_TYPES, v.type, function (x) { v.type = x; drawSidebar(); }));
+    opts.appendChild(dateBox('Date the request was submitted (blank = on time)', v.submitted, function (x) { v.submitted = x; drawSidebar(); }));
+    opts.appendChild(btn('Start over with another shift', function () { v.person = ''; v.from = null; clearTicks(); drawCalendar(); drawSidebar(); }, 'wide'));
+    side.appendChild(opts);
+    r.warnings.forEach(function (w) { side.appendChild(el('div', 'warn', w)); });
+    if (r.status === 'none') return;
+
+    var ticks = el('details', 'tickbox'); ticks.open = tickOpen; ticks.ontoggle = function () { tickOpen = ticks.open; };
+    var marked = state.leave.length + state.kelly.length + state.unprot.length + state.ot20.length + state.certs.length;
+    ticks.appendChild(el('summary', null, 'Things the schedule does not show' + (marked ? ' (' + marked + ' marked)' : '')));
+    ticks.appendChild(el('p', 'hint', 'Tick \"Approved leave\" for anyone who is already off on these days; the two-person limit and the yearly one-per-day rule are checked from that. The other boxes work as they do for a callout.'));
+    ticks.appendChild(tickTable());
+    side.appendChild(ticks);
+
+    side.appendChild(el('h3', 'vhead', '1. Can it be approved?'));
+    var top = el('div', 'verdict ' + (r.status === 'ok' ? '' : r.status)); top.appendChild(el('strong', null, r.statusText));
+    if (r.total != null) top.appendChild(el('span', null, r.typeName + ', ' + hoursTxt(r.total) + (r.yearly ? ', guaranteed yearly request' : '') + (r.parts.length > 1 ? ', ' + r.parts.length + ' parts' : '') + '.'));
+    side.appendChild(top);
+    r.parts.forEach(function (p) {
+      var box = el('div', 'verdict ' + (p.verdict.level === 'ok' ? '' : p.verdict.level));
+      box.appendChild(el('strong', null, (r.parts.length > 1 ? 'Part ' + p.n + ' (' + p.label + '): ' : '') + p.verdict.title));
+      box.appendChild(el('span', null, p.verdict.text));
+      if (p.deadline) box.appendChild(el('span', 'why', p.deadline));
+      side.appendChild(box);
+    });
+    r.verdicts.forEach(function (x) { var box = el('div', 'verdict ' + x.level); box.appendChild(el('strong', null, x.title)); box.appendChild(el('span', null, x.text)); side.appendChild(box); });
+
+    side.appendChild(el('h3', 'vhead', '2. How the opening gets filled'));
+    if (!listsReady()) side.appendChild(el('div', 'warn', 'Practice only: the seniority and overtime lists have not been set up, so these positions are not real yet. Open \"Roster and lists\".'));
+    if (r.unknownHours) side.appendChild(el('div', 'hint', 'No schedule for these dates, so there is no list of who could fill it yet.'));
+    r.parts.forEach(function (p) {
+      if (!p.callout) return;
+      var d = el('details', 'vpart'); d.open = p.n === 1;
+      d.appendChild(el('summary', null, (r.parts.length > 1 ? 'Part ' + p.n + ': ' : '') + p.label + (p.volunteersOnly ? ' (volunteers only)' : ' (monthly process)')));
+      var st = el('details', 'steps'); st.open = true; st.appendChild(el('summary', null, 'Which process applies (' + p.callout.steps.length + ' steps)'));
+      var ol = el('ol'); p.callout.steps.forEach(function (s) { ol.appendChild(el('li', null, s)); }); st.appendChild(ol); d.appendChild(st);
+      if (p.mandated.length) d.appendChild(el('div', 'hint', 'If nobody volunteers, this part falls to ' + p.mandated.join(', ') + '. They then go to the bottom of the Mandatory list before the next part is filled.'));
+      p.callout.warnings.forEach(function (w) { if (!/Schedule file:/.test(w)) d.appendChild(el('div', 'warn', w)); });
+      drawGroups(d, p.callout);
+      side.appendChild(d);
+    });
+
+    side.appendChild(el('h3', 'vhead', '3. The requester\'s protection'));
+    var pb = el('div', 'verdict ' + (r.protection.applies ? '' : 'prov')); pb.appendChild(el('span', null, r.protection.text)); side.appendChild(pb);
+
+    side.appendChild(el('h3', 'vhead', 'What the scheduler must check'));
+    var ul = el('ul', 'vcheck'); r.checks.forEach(function (x) { ul.appendChild(el('li', null, x)); }); side.appendChild(ul);
+  }
+  function hoursTxt(m) { var h = Math.round(m / 60 * 4) / 4; return h + (h === 1 ? ' hour' : ' hours'); }
 
   // ---------- Roster and lists screen ----------
   function openRoster() { $('settings').hidden = false; $('main').hidden = true; drawRoster(); }
@@ -292,6 +389,8 @@
   function shiftMonth(n) { var m = state.month + n; state.year += Math.floor(m / 12); state.month = ((m % 12) + 12) % 12; drawCalendar(); }
   $('prev').onclick = function () { shiftMonth(-1); };
   $('next').onclick = function () { shiftMonth(1); };
+  $('modeCallout').onclick = function () { setMode('callout'); };
+  $('modeVacation').onclick = function () { setMode('vacation'); };
   $('openSettings').onclick = function () { if (sched) openRoster(); };
   $('closeSettings').onclick = closeRoster;
   ['fileInput', 'fileInput2'].forEach(function (id) { $(id).onchange = function () { if (this.files[0]) readFile(this.files[0]); this.value = ''; }; });

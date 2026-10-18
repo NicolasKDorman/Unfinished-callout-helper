@@ -2,7 +2,7 @@
 
 **Unfinished. For testing.**
 
-A tool for schedulers. When someone calls out of a shift, it shows:
+A tool for schedulers. When someone calls out of a shift, or asks for future time off, it shows:
 
 - **who to call, in order**, and why each person is in that spot, and
 - **who must NOT be called or mandated**, and why.
@@ -36,6 +36,18 @@ The tool remembers the last schedule you loaded on this computer. Load a fresh o
    - **Do NOT call**: people who can't work it at all, and why.
    - **Do NOT mandate**: people protected from a mandate who may still volunteer (part-timers, approved leave, two Kelly days off).
 5. If something isn't on the schedule (approved leave, 20+ hours of voluntary overtime, lapsed certifications, or a Kelly day the tool missed), open **Things the schedule does not show** and tick it.
+
+## Vacation requests
+
+Click **Vacation request** at the top to switch from callouts. Click the name of the person asking for time off, on the shift where it starts (click the same person on a later shift to stretch the dates). Pick the kind of leave (vacation, holiday leave or comp time) and enter the date the request was submitted. Sick leave isn't a vacation request; use **Callout** for that.
+
+The right side shows:
+
+1. **Can it be approved?** Granted normally, provisional (a holiday blackout date or a late request: only if volunteers cover it), under the 12-hour minimum (volunteers only, no mandate), or a conflict (someone else already off, or more than two people protected by approved leave). A request that crosses a holiday or a month is split into parts, each judged on its own.
+2. **How the opening gets filled.** Which SOG process applies given the timing, with the dates, then the ordered lists: part-time and volunteers first, full-time bids in Voluntary list order, then mandates in Mandatory list order for anything left. Who can't be called or mandated is shown with reasons, the same as for a callout.
+3. **The requester's protection.** The window they are protected from mandates once approved, and whether it uses one of the two leave spots.
+
+The schedule can't show approved leave. Tick anyone already off in **Things the schedule does not show** and the two-person limit is checked. The tool lists everything else the scheduler must check (who asked first, banked hours, the date the schedule is finalized). `RULES.md` section "Vacation and leave requests" lists the rules and where the tool had to choose between two readings; those need a department answer.
 
 ## Setting up once: Roster and lists
 

@@ -369,7 +369,7 @@
     if (capCount > 2) res.warnings.push(capCount + ' people are marked on approved leave. Only two may be protected for approved leave at a time (SOG 100.17.12); the Chief says who is not protected on which days. Tick "Not protected" for anyone the Chief names. Kelly days don\'t count toward the two.');
     (sc.notes || []).forEach(function (x) { res.warnings.push('Schedule file: ' + x); });
 
-    var volOnly = reason === 'short' || reason === 'late' || (reason === 'leave' && !!holiday);
+    var volOnly = reason === 'short' || reason === 'late' || (reason === 'leave' && !!holiday && !opts.noBlackout); // noBlackout: comp time on a holiday (RULES.md V6, uncertainty 9)
     var avail = [], volunteers = [];
     people.forEach(function (n) {
       var shifts = sc.ownShifts(n), noCall = [], noMand = [], notes = [], spn = [];
@@ -441,6 +441,17 @@
       res.noMandate = res.noMandate.filter(function () { return false; });
       return res;
     }
+    if (opts.process === 'monthly') { // a vacation request known before the monthly finalizing process (SOG 100.17.09(1)-(5))
+      (opts.monthSteps || []).forEach(function (x) { res.steps.push(x); });
+      var ptv = volunteers.filter(function (n) { return roster[n] === 'pt'; });
+      var offerM = volList.filter(function (n) { return volunteers.indexOf(n) !== -1; });
+      res.groups.push({ title: 'First: part-time, LTE and qualified volunteers', note: 'Posted before the full-time bidding window (SOG 100.17.09(1)). No order is given among them.', volunteer: true,
+        people: ptv.map(function (n) { return { name: n, why: 'Part-time', notes: res.notes[n] || [] }; }) });
+      res.groups.push({ title: 'Then: full-time bids, awarded in this order', note: 'Voluntary Overtime List order (SOG 100.17.09(2)). Protected people may still bid.', volunteer: true,
+        people: offerM.map(function (n) { return line(n, 'Voluntary', volList, o0, o1, true); }) });
+      res.groups.push({ title: 'Last: if hours are still open, mandate in this order', note: 'Top-most eligible person on the Mandatory Overtime List for as many hours as allowed, then the next for what is left (SOG 100.17.10(1)(a)).', people: inOrder(avail, mandList, 'Mandatory') });
+      return res;
+    }
     if (reason === 'leave') res.steps.push('Approved leave of 12+ hours, asked for on time, on a non-holiday: fill it the normal way for the notice you have.');
 
     res.steps.push('First check whether a fill is needed: if the remaining crew still gives a legal two-paramedic ambulance, no one is called (SOG 100.50.06).');
@@ -486,6 +497,164 @@
     }
     return res;
   }
+
+  /* ---------- Vacation and leave requests (RULES.md, "Vacation and leave requests") ---------- */
+  var LEAVE_TYPES = { vacation: 'Vacation', holiday: 'Holiday leave', comp: 'Comp time' };
+  function ymd(y, m, d) { return y + '-' + pad(m) + '-' + pad(d); }
+  function monthBack(y, m, k) { var t = y * 12 + (m - 1) - k; return { y: Math.floor(t / 12), m: (t % 12) + 1 }; }
+  function fmtY(iso) { return fmt(iso) + ', ' + iso.slice(0, 4); }
+  function monthName(y, m) { return ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][m - 1] + ' ' + y; }
+  // The request deadline for leave in month (y,m): the 24th at 23:59 of the month two before (CBA 10.2: January 24 for March).
+  function requestDeadline(y, m) { var b = monthBack(y, m, 2); return ymd(b.y, b.m, 24); }
+  // 5 pm on the 13th of the month before, or the next business day (SOG 100.17.09(5)).
+  function mandateDay(y, m) {
+    var b = monthBack(y, m, 1), iso = ymd(b.y, b.m, 13);
+    for (var i = 0; i < 10; i++) { var dw = new Date(isoToWall(iso) * MIN).getUTCDay(); if (dw !== 0 && dw !== 6 && !holidayName(iso)) break; iso = addDays(iso, 1); }
+    return iso;
+  }
+  function monthlySteps(y, m) {
+    var b = monthBack(y, m, 1), c = monthBack(y, m, 2), last = ymd(c.y, c.m, new Date(Date.UTC(c.y, c.m, 0)).getUTCDate());
+    return [
+      'Known before the monthly finalizing process, so it is filled in the monthly steps for ' + monthName(y, m) + ' (SOG 100.17.09(1)-(5); the dates assume the process for a month runs the month before, RULES.md uncertainty 1).',
+      'Until 23:59 on ' + fmtY(last) + ': attempts to fill it with qualified volunteers and part-time or LTE staff (SOG 100.17.09(1)).',
+      fmtY(ymd(b.y, b.m, 1)) + ' to 23:59 on ' + fmtY(ymd(b.y, b.m, 5)) + ': only full-time staff may bid, awarded in Voluntary Overtime List order, going through the month\'s openings in date order. If two bid on the same opening, the bid with more consecutive hours wins (SOG 100.17.09(2)).',
+      'Then administrative staff, volunteers and part-time or LTE staff may be used (SOG 100.17.09(3)).',
+      'All qualified staff may re-bid until noon on ' + fmtY(ymd(b.y, b.m, 10)) + '. After noon the hours go first come, first served; more consecutive hours wins a tie (SOG 100.17.09(4)).',
+      'Anything left is mandated by 5 pm on ' + fmtY(mandateDay(y, m)) + ' (the 13th, or the next business day). After that the schedule for ' + monthName(y, m) + ' is final (SOG 100.17.09(5)). Mandates follow the Mandatory Overtime List in date order, each person moves to the bottom, and the notice is an email (SOG 100.17.10(1)(a)).',
+      'There is no pass at this stage: the yearly pass only applies after the schedule is final (SOG 100.17.13).'
+    ];
+  }
+
+  /* opts: {sched, person, from, to (wall minutes), submitted ('YYYY-MM-DD' or empty), type: vacation|holiday|comp,
+            roster, mandList, volList, seniority, leave (others already off), kelly, unprot, ot20, certs}
+     Answers: can it be approved, how the opening is filled, and what protection the requester gets. */
+  function computeVacation(opts) {
+    var sc = opts.sched, person = opts.person, o0 = opts.from, o1 = opts.to, type = LEAVE_TYPES[opts.type] ? opts.type : 'vacation', sub = opts.submitted || '';
+    var res = { person: person, from: o0, to: o1, type: type, typeName: LEAVE_TYPES[type], submitted: sub, range: fmtT(o0) + ' to ' + fmtT(o1),
+      verdicts: [], parts: [], checks: [], warnings: [], status: 'ok', statusText: '', total: null, yearly: false, protection: null, others: [], unknownHours: false };
+    if (!(o1 > o0)) { res.status = 'none'; res.warnings.push('The end is not after the start. Check the dates.'); return res; }
+    if (!person || sc.people.indexOf(person) === -1 && !sc.ownShifts(person).length) { res.status = 'none'; res.warnings.push('Pick the person asking for leave.'); return res; }
+    var roster = effectiveRoster(sc, opts.roster), leaveTick = opts.leave || [], unprot = opts.unprot || [];
+    var others = leaveTick.filter(function (n) { return n !== person && unprot.indexOf(n) === -1; });
+    res.others = others;
+    var d0 = shiftDayOf(o0), d1 = shiftDayOf(o1 - 1);
+    var inFile = !!(sc.first && sc.last) && d0 >= sc.first && d1 <= sc.last;
+    if (!inFile && sc.first) res.warnings.push('The loaded schedule covers ' + fmt(sc.first) + ' to ' + fmt(sc.last) + '. Part of these dates is outside it, so shifts on those days are not known.');
+
+    // The opening: the requester's own scheduled time inside the dates.
+    var clipped = merge(sc.ownShifts(person).filter(function (r) { return overlap(r.start, r.end, o0, o1); }).map(function (r) { return [Math.max(r.start, o0), Math.min(r.end, o1)]; }), 0.5);
+    var pieces = []; // one piece per shift day
+    if (clipped.length) {
+      clipped.forEach(function (c) {
+        for (var d = shiftDayOf(c[0]); shiftStart(d) < c[1]; d = addDays(d, 1)) pieces.push({ day: d, from: Math.max(c[0], shiftStart(d)), to: Math.min(c[1], shiftStart(d) + DAY) });
+      });
+      res.total = total(clipped);
+    } else if (!inFile) { // no schedule for these dates: judge the dates only
+      res.unknownHours = true;
+      for (var dd = d0; dd <= d1; dd = addDays(dd, 1)) pieces.push({ day: dd, from: Math.max(o0, shiftStart(dd)), to: Math.min(o1, shiftStart(dd) + DAY) });
+      res.warnings.push('The loaded schedule does not cover these dates, so the hours, the 12-hour minimum and who would fill the opening cannot be worked out. The answer below is about the dates only. Load the schedule once it is published.');
+    } else {
+      res.status = 'none'; res.statusText = 'No shifts to cover';
+      res.warnings.push(person + ' has no scheduled shifts between these dates in the loaded schedule, so there is nothing to fill. A request for days off the schedule is only a question of approval.');
+      return res;
+    }
+    if (res.total != null && res.total === 0) res.total = null;
+
+    // Parts: adjacent days with the same holiday status and the same month are one opening.
+    var parts = [];
+    pieces.forEach(function (pc) {
+      var hol = holidayName(pc.day), y = +pc.day.slice(0, 4), m = +pc.day.slice(5, 7), l = parts[parts.length - 1];
+      if (l && l.to === pc.from && !!l.holiday === !!hol && l.y === y && l.m === m) { l.to = pc.to; l.days.push(pc.day); if (hol && l.holidays.indexOf(hol) === -1) l.holidays.push(hol); }
+      else parts.push({ from: pc.from, to: pc.to, days: [pc.day], holiday: hol, holidays: hol ? [hol] : [], y: y, m: m });
+    });
+    var short = res.total != null && res.total < 12 * HOUR;
+    res.short = short;
+
+    // Guaranteed yearly leave: asked for in the year before, by October 15, in whole 24-hour shifts (CBA 10.2).
+    var subY = sub ? +sub.slice(0, 4) : 0, wholeShifts = clipped.length ? clipped.every(function (c) { return (c[0] - SHIFT_START) % DAY === 0 && (c[1] - c[0]) % DAY === 0; }) : false;
+    var yearlyWindow = !!sub && sub <= subY + '-10-15' && parts.every(function (p) { return p.y === subY + 1; });
+    res.yearly = yearlyWindow && wholeShifts && !short;
+    if (yearlyWindow && !res.yearly && !res.unknownHours) res.verdicts.push({ level: 'prov', title: 'Not a guaranteed yearly request', text: 'It was submitted in time for the yearly process, but the yearly process only takes full 24-hour shifts (CBA 10.2). This one is treated as an ordinary monthly request, which is on time.' });
+    if (yearlyWindow && res.unknownHours) res.yearly = true;
+
+    // Requester's remaining work, for the protection window.
+    var mine = sc.ownShifts(person).map(function (r) { return [r.start, r.end]; });
+    var left = minus(mine, clipped), firstFrom = parts[0].from, lastTo = parts[parts.length - 1].to;
+    var before = left.filter(function (x) { return x[1] <= firstFrom; }).map(function (x) { return x[1]; }), after = left.filter(function (x) { return x[0] >= lastTo; }).map(function (x) { return x[0]; });
+    res.window = [before.length ? Math.max.apply(null, before) : null, after.length ? Math.min.apply(null, after) : null];
+
+    var ft = candidates(sc, opts.roster, roster).filter(function (n) { return roster[n] === 'ft'; });
+    var mand = activeList(opts.mandList, ft, 'top');
+    var worst = 0, RANK = { ok: 0, prov: 1, short: 2, conflict: 3 };
+    function note(level) { if (RANK[level] > worst) worst = RANK[level]; }
+
+    parts.forEach(function (p, i) {
+      var late = !res.yearly && !!sub && sub > requestDeadline(p.y, p.m);
+      var blackout = !!p.holiday && type !== 'comp';
+      var volOnly = short || late || blackout;
+      var reason = short ? 'short' : late ? 'late' : 'leave';
+      var part = { n: i + 1, from: p.from, to: p.to, days: p.days, holiday: p.holiday ? p.holidays.join(', ') : '', late: late, month: monthName(p.y, p.m),
+        label: fmtT(p.from) + ' to ' + fmtT(p.to) + ' (' + hours(p.to - p.from) + ')', volunteersOnly: volOnly, verdict: null, callout: null, mandated: [], deadline: '' };
+      part.deadline = res.yearly ? '' : 'Request deadline for ' + monthName(p.y, p.m) + ': 23:59 on ' + fmtY(requestDeadline(p.y, p.m)) + ' (CBA 10.2).';
+      if (short) part.verdict = { level: 'short', title: 'Under the 12-hour minimum', text: 'Only ' + hours(res.total) + ' in total. A vacation request is not less than 12 hours (CBA 10.2). It can still be approved, but only if the hours are covered without any mandate, and it is not approved leave, so it gives no mandate protection.' };
+      else if (blackout) part.verdict = { level: 'prov', title: 'Provisional: blackout date (' + part.holiday + ')', text: 'Contract holidays are blacked out for vacation and holiday leave (CBA 10.4). It is approved only if volunteers cover the whole opening; if a mandate would be needed, it is denied. The answer is due on or before the day that week\'s schedule is finalized.' };
+      else if (late) part.verdict = { level: 'prov', title: 'Provisional: late request', text: 'Submitted after the ' + fmtY(requestDeadline(p.y, p.m)) + ' deadline for ' + monthName(p.y, p.m) + '. The Chief or designee may approve it, but it follows the blackout policy: only if volunteers cover it, never by a mandate (CBA 10.2, 10.4; SOG 100.17.09(6)).' };
+      else part.verdict = { level: 'ok', title: res.yearly ? 'Guaranteed yearly leave' : 'Can be approved', text: res.yearly ? 'Asked for by October 15 in whole 24-hour shifts, so it is guaranteed unless someone more senior asked for the same day. It is finalized by November 1 (CBA 10.2).' : (sub ? 'On time and 12 hours or more, so it is granted normally (CBA 10.2).' : 'Assumed on time (no submitted date entered) and 12 hours or more, so it is granted normally (CBA 10.2).') };
+      note(part.verdict.level);
+
+      if (!res.unknownHours) {
+        var mdate = null;
+        part.process = volOnly ? 'volunteers' : 'monthly';
+        part.callout = computeCallout({ sched: sc, entry: { name: person, start: p.from, end: p.to, kind: 'work' }, from: p.from, to: p.to, notice: 'gtRot', reason: reason,
+          process: volOnly ? null : 'monthly', monthSteps: volOnly ? null : monthlySteps(p.y, p.m), noBlackout: type === 'comp', roster: opts.roster, mandList: mand, volList: opts.volList,
+          leave: leaveTick.filter(function (n) { return n !== person; }), kelly: opts.kelly, unprot: opts.unprot, ot20: opts.ot20, certs: opts.certs });
+        if (!volOnly) { // who would be mandated if nobody volunteers: they go to the bottom before the next part (SOG 100.17.10(1)(a)i)
+          var g = part.callout.groups[part.callout.groups.length - 1], rem = [[p.from, p.to]];
+          g.people.forEach(function (x) { var nr = minus(rem, merge(part.callout.hoursFor[x.name].mand)); if (total(nr) < total(rem)) part.mandated.push(x.name); rem = nr; });
+          mand = mand.filter(function (n) { return part.mandated.indexOf(n) === -1; }).concat(part.mandated);
+        }
+      }
+      res.parts.push(part);
+    });
+
+    // Conflicts and the two-person limit.
+    if (res.yearly && others.length) {
+      var sen = opts.seniority || [], sp = sen.indexOf(person), more = others.filter(function (n) { var k = sen.indexOf(n); return sp !== -1 && k !== -1 && k < sp; });
+      var cmp = sp === -1 ? 'Seniority is not set up here for ' + person + ', so the tool can\'t compare.' : (more.length ? more.join(', ') + (more.length > 1 ? ' are' : ' is') + ' more senior, so would get the day.' : person + ' is more senior than ' + others.join(', ') + ', so would get the day.');
+      res.verdicts.push({ level: 'conflict', title: 'Conflict: someone else is off', text: 'Only one shift-work employee may be off on any given day in the yearly process, and the more senior one gets it (CBA 10.2). Marked as already off: ' + others.join(', ') + '. ' + cmp + ' The tool can\'t tell which days overlap; check.' });
+      note('conflict');
+    }
+    var capOver = others.length >= 2;
+    if (capOver) { res.verdicts.push({ level: 'conflict', title: 'Two people are already protected by approved leave', text: 'Only two employees at a time may be exempt from mandates for approved leave (SOG 100.17.12). Marked as already off: ' + others.join(', ') + '. This would be a third. The request may still be approved, but the Chief then says which days the requester is not exempt.' }); note('conflict'); }
+
+    // The requester's protection.
+    var win = res.window, wtxt = win[0] != null && win[1] != null ? fmtT(win[0]) + ' to ' + fmtT(win[1]) : win[0] != null ? 'from ' + fmtT(win[0]) + ' to the start of their next shift, which is not in the loaded schedule' : win[1] != null ? 'from their last shift, which is not in the loaded schedule, to ' + fmtT(win[1]) : 'unknown: the loaded schedule shows no shifts around these dates';
+    var pr = { applies: false, usesSpot: false, window: win, text: '' };
+    if (short) pr.text = 'None. A vacation request under 12 hours is not approved leave, so it gives no protection from mandates and does not use one of the two leave spots (CBA 10.2).';
+    else if (capOver) pr.text = 'Probably none. Two other people are already protected, so this would be a third. If the Chief approves, the Chief names which days the requester can still be mandated (SOG 100.17.12). Window if protected: ' + wtxt + '.';
+    else { pr.applies = true; pr.usesSpot = true; pr.text = 'Once approved: protected from mandates ' + wtxt + ' (from the end of the last shift before to the start of the next, SOG 100.17.11(2)(a)). This uses leave spot ' + (others.length + 1) + ' of 2 (SOG 100.17.12).' + (res.parts.some(function (p) { return p.volunteersOnly; }) ? ' For parts that are provisional, protection starts only if they are approved.' : ''); }
+    pr.text += ' Two Kelly days off in a row are protected anyway and don\'t use a spot.';
+    res.protection = pr;
+
+    // Things the file cannot show.
+    var tent = sc.records.filter(function (r) { return r.kind === 'slot' && /tentative/i.test(r.name); }), tdays = {};
+    tent.forEach(function (r) { tdays[shiftDayOf(r.start)] = 1; });
+    var tn = Object.keys(tdays).length, span = sc.first && sc.last ? Math.round((isoToWall(sc.last) - isoToWall(sc.first)) / DAY) + 1 : 0;
+    if (tn && span && tn / span >= 0.8) res.checks.push('The schedule shows "Tentative Approval" seats on ' + tn + ' of ' + span + ' days. That is almost every day, so the tool reads it as a standing seat, not as pending leave.');
+    else if (tn) { var tin = res.parts.reduce(function (a, p) { return a.concat(p.days.filter(function (d) { return tdays[d]; })); }, []); if (tin.length) res.checks.push('"Tentative Approval" appears on ' + tin.map(fmt).join(', ') + '. That probably means leave is pending on those days; check it.'); }
+    if (!sub) res.checks.push('No submitted date was entered, so the tool assumed the request is on time. Enter it to check the ' + 'deadline.');
+    res.checks.push('Whether anyone else asked for the same days first. In the monthly process the first request submitted gets the leave (CBA 10.2); the schedule doesn\'t show requests or when they came in.');
+    res.checks.push('Whether ' + person + ' has enough ' + LEAVE_TYPES[type].toLowerCase() + ' hours banked (CBA 10.1 to 10.2, 9.2).');
+    if (!others.length) res.checks.push('Who is already on approved leave. The schedule can\'t show it; tick them in "Things the schedule does not show" and the two-person limit is checked.');
+    if (parts.some(function (p) { return p.holiday && type !== 'comp'; })) res.checks.push('The date this week\'s schedule is finalized, which is when the holiday answer is due. It is in a contract section (Article 7, Section 7.9) that is not in the copy used here.');
+    if (type === 'comp' && parts.some(function (p) { return p.holiday; })) res.checks.push('Comp time on a contract holiday: the contract blacks out vacation and holiday leave only (CBA 10.4), so the tool treats comp time as an ordinary request. Confirm with the department.');
+    if (sc.work.some(function (r) { return r.forName === person && r.name !== person && overlap(r.start, r.end, o0, o1); })) res.checks.push(person + ' has traded away shifts inside these dates. Those are not theirs to take leave from, and a trade is not approved leave (CBA 7.7).');
+
+    res.status = ['ok', 'prov', 'short', 'conflict'][worst];
+    res.statusText = { ok: 'Can be granted', prov: 'Provisional: only if volunteers cover it', short: 'Under the 12-hour minimum: volunteers only', conflict: 'Conflict to resolve' }[res.status];
+    if (res.status === 'conflict' && res.parts.some(function (p) { return p.verdict.level === 'prov' || p.verdict.level === 'short'; })) res.statusText += ' (and parts are provisional)';
+    return res;
+  }
   function uniq(a) { return a.filter(function (x, i) { return a.indexOf(x) === i; }); }
 
   /* Roles: what the scheduler set wins; otherwise the guess from hours worked. */
@@ -526,7 +695,7 @@
 
   var api = { infer: infer, withInference: withInference, effectiveRoster: effectiveRoster, rosterChecks: rosterChecks, activeList: activeList, candidates: candidates,
     importICS: importICS, makeSchedule: makeSchedule, computeCallout: computeCallout, orderedNames: orderedNames,
-    holidayName: holidayName, NOTICE: NOTICE, REASONS: REASONS, fmt: fmt, fmtT: fmtT, hhmm: hhmm, shortSpan: shortSpan, addDays: addDays,
+    holidayName: holidayName, computeVacation: computeVacation, LEAVE_TYPES: LEAVE_TYPES, requestDeadline: requestDeadline, NOTICE: NOTICE, REASONS: REASONS, fmt: fmt, fmtT: fmtT, hhmm: hhmm, shortSpan: shortSpan, addDays: addDays,
     isoOf: isoOf, shiftDayOf: shiftDayOf, shiftStart: shiftStart, wall: wall, HOUR: HOUR, DAY: DAY, DEPT_TZ: DEPT_TZ };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.CalloutEngine = api;
 })(this);

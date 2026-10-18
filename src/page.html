@@ -22,6 +22,9 @@ button{font:inherit;cursor:pointer}
 .entry{flex-wrap:wrap}.trade{flex-basis:100%;font-size:10px;color:#7a4b00;background:#fdecc8;border-radius:3px;padding:0 4px;margin-top:1px}
 table.roles td.tn{white-space:nowrap}table.roles td.hint{white-space:nowrap}
 .lab{font-size:10px;color:#1f3b5c;font-weight:600}.day.outside{opacity:.45}
+.modes{display:flex;border:1px solid #fff;border-radius:6px;overflow:hidden}.mode{background:transparent;color:#fff;border:0;padding:6px 12px;font-weight:600}.mode.on{background:#fff;color:#1f3b5c}
+.verdict{border-left:5px solid #2e7d32;background:#eef7ee;padding:8px 10px;margin:8px 0;font-size:14px}.verdict strong{display:block;font-size:15px}.verdict.prov{border-color:#e0a800;background:#fff3cd}.verdict.short{border-color:#ef8f00;background:#fff0dc}.verdict.conflict{border-color:#c62828;background:#fdecea}
+.vhead{font-size:17px;margin:14px 0 4px;color:#1f3b5c;border-bottom:2px solid #1f3b5c}.vpart{border:1px solid #d7dbe0;border-radius:6px;padding:4px 10px;margin:8px 0}.vpart>summary{cursor:pointer;font-weight:700;color:#1f3b5c}.vcheck{margin:4px 0;padding-left:20px;font-size:13px}
 .name.ignored{opacity:.5}.why.note{color:#7a4b00}
 .checks{border-color:#e0a800;background:#fffbea}
 .times{display:grid;grid-template-columns:1fr 1fr;gap:6px}.times input{width:100%;font:inherit;padding:3px}
@@ -90,6 +93,7 @@ h3{margin:14px 0 4px;font-size:16px}
 <body>
 <header>
   <h1>Unnamed Municipality EMS Callout Helper</h1>
+  <span class="modes" role="group" aria-label="What to work on"><button class="mode on" id="modeCallout" type="button" aria-pressed="true">Callout</button><button class="mode" id="modeVacation" type="button" aria-pressed="false">Vacation request</button></span>
   <span class="src">Schedule: <span id="sourceLabel"></span></span>
   <label class="top filebtn">Load schedule (.ics)<input type="file" id="fileInput" accept=".ics,text/calendar" hidden></label>
   <button class="top" id="openSettings" type="button">Roster and lists</button>

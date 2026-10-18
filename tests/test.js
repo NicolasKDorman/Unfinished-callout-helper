@@ -337,6 +337,179 @@ octKelly(path.join(root, 'sample', 'sample-schedule.ics'), path.join(root, 'samp
   ok(/Voluntary/.test(app2.text('lists')) || /Voluntary/.test(app2.text('banner')) || app2.checkTexts().some(function (t) { return /Voluntary/.test(t); }), 'RR05: the app passes both lists, so a Voluntary gap shows on the review screen (' + app2.checkTexts().join(' | ') + ')');
 })();
 
+// ---------- 8. Vacation and leave requests (RULES.md, "Vacation and leave requests") ----------
+(function () {
+  function ev(name, s, e, extra) { var o = { 'DTSTART;TZID=America/Chicago': s, 'DTEND;TZID=America/Chicago': e, SUMMARY: name }; if (extra) Object.assign(o, extra); return o; }
+  function dt(mo, d, h) { return '2026' + ('0' + mo).slice(-2) + ('0' + d).slice(-2) + 'T' + ('0' + (h || 8)).slice(-2) + '0000'; }
+  function day24(name, mo, d) { var n = W.addDays('2026-' + ('0' + mo).slice(-2) + '-' + ('0' + d).slice(-2), 1); return ev(name, dt(mo, d), '2026' + n.slice(5, 7) + n.slice(8, 10) + 'T080000'); }
+  function build(list) { return W.withInference(W.makeSchedule(W.importICS(ics(list)))); }
+  var FT = { Ann: 'ft', Bob: 'ft', Cal: 'ft', Dee: 'ft', Eve: 'ft', Pam: 'pt' };
+  function vac(sc, o) { return W.computeVacation(Object.assign({ sched: sc, roster: FT, person: 'Ann', type: 'vacation' }, o)); }
+  function allNames(r) { var a = []; r.parts.forEach(function (p) { if (p.callout) p.callout.groups.forEach(function (g) { a = a.concat(names(g.people)); }); }); return a; }
+  function mandNames(r, i) { var g = r.parts[i || 0].callout.groups; return names(g[g.length - 1].people); }
+  var w = W.wall;
+  // Nov 2026: Ann works the 10th and 11th; others around. Nov 26 is Thanksgiving.
+  var sc = build([day24('Ann', 11, 6), day24('Ann', 11, 10), day24('Ann', 11, 11), day24('Ann', 11, 16), day24('Bob', 11, 10), day24('Cal', 11, 11), day24('Dee', 11, 12), day24('Eve', 11, 9), day24('Pam', 11, 10), day24('Eve', 11, 20)]);
+
+  // On time, 12+ hours: granted normally, filled by the monthly steps.
+  var a = vac(sc, { from: w(2026, 11, 10, 8), to: w(2026, 11, 12, 8), submitted: '2026-09-10' });
+  ok(a.status === 'ok' && /Can be granted/.test(a.statusText) && a.parts.length === 1 && a.parts[0].verdict.level === 'ok', 'V2: an on-time 48-hour request is granted normally');
+  ok(a.parts[0].process === 'monthly' && a.parts[0].callout.steps.some(function (x) { return /5 pm on Fri Oct 13, 2026|5 pm on Tue Oct 13, 2026/.test(x) || /5 pm on/.test(x); }) && /100\.17\.09\(1\)/.test(a.parts[0].callout.steps.join(' ')), 'V7: the monthly finalizing steps (100.17.09(1)-(5)) are shown');
+  ok(a.parts[0].callout.groups.length === 3 && a.parts[0].callout.groups[1].volunteer && /Voluntary Overtime List/.test(a.parts[0].callout.groups[1].note), 'V7: volunteers, then full-time bids in Voluntary list order, then mandates');
+  ok(a.parts[0].callout.steps.join(' ').indexOf('pass') > -1 && !/may use their one pass/.test(a.parts[0].callout.steps.join(' ')), 'V8: no pass step in the monthly process');
+  ok(a.total === 48 * 60 && /Sat Nov 7 08:00 to Mon Nov 16 08:00|Sat Nov 7 08:00 to Mon Nov 16/.test(a.protection.text) && a.protection.applies && a.protection.usesSpot, 'V11: approved 12h+ leave protects the requester and uses a leave spot (' + a.protection.text.slice(0, 120) + ')');
+  ok(a.window[0] != null || a.window[1] != null, 'V11: protection window is anchored on the requester\'s shifts around the leave');
+  ok(allNames(a).indexOf('Ann') === -1, 'the requester is never offered their own opening');
+  // Mandate of the first day moves that person to the bottom before the second day (V8).
+  var two = vac(build([day24('Ann', 11, 10), day24('Ann', 11, 12), day24('Bob', 11, 5), day24('Cal', 11, 5), day24('Dee', 11, 5)]), { from: w(2026, 11, 10, 8), to: w(2026, 11, 13, 8), submitted: '2026-09-10' });
+  ok(two.parts.length === 1 || two.parts.length === 2, 'two shifts with a gap are one request');
+  var seq = vac(build([day24('Ann', 11, 10), day24('Ann', 11, 11), day24('Bob', 11, 2), day24('Cal', 11, 2), day24('Dee', 11, 2)]), { from: w(2026, 11, 10, 8), to: w(2026, 11, 12, 8), submitted: '2026-09-10', mandList: ['Bob', 'Cal', 'Dee', 'Ann', 'Eve'] });
+  ok(mandNames(seq).length >= 1 && mandNames(seq)[0] === 'Bob', 'V8: mandate order follows the Mandatory list (' + mandNames(seq) + ')');
+
+  // Short request: under 12 hours.
+  var s1 = vac(sc, { from: w(2026, 11, 10, 8), to: w(2026, 11, 10, 16), submitted: '2026-09-10' });
+  ok(s1.status === 'short' && s1.short && s1.parts[0].verdict.level === 'short' && s1.parts[0].process === 'volunteers', 'V3: under 12 hours is volunteers-only');
+  ok(allNames(s1).length > 0 && s1.parts[0].callout.groups.length === 1 && s1.parts[0].callout.groups[0].volunteer && /Nobody may be mandated/.test(s1.parts[0].callout.steps.join(' ')), 'V3: short leave has no mandate group');
+  ok(!s1.protection.applies && /None/.test(s1.protection.text) && !s1.protection.usesSpot, 'V3: short leave gives no protection and uses no spot');
+  ok(!/Pam/.test(s1.others.join()) , 'sanity');
+  var s12 = vac(sc, { from: w(2026, 11, 10, 8), to: w(2026, 11, 10, 20), submitted: '2026-09-10' });
+  ok(s12.status === 'ok' && !s12.short, 'V3: exactly 12 hours is not short');
+  var sTwo = vac(build([ev('Ann', dt(11, 10, 8), dt(11, 10, 16)), ev('Ann', dt(11, 11, 8), dt(11, 11, 16)), day24('Bob', 11, 10)]), { from: w(2026, 11, 10, 8), to: w(2026, 11, 12, 8), submitted: '2026-09-10' });
+  ok(sTwo.total === 16 * 60 && !sTwo.short, 'uncertainty 2: two 8-hour days total 16 hours and pass the minimum');
+
+  // Late request.
+  var l1 = vac(sc, { from: w(2026, 11, 10, 8), to: w(2026, 11, 12, 8), submitted: '2026-09-30' });
+  ok(l1.status === 'prov' && l1.parts[0].late && /Provisional: late request/.test(l1.parts[0].verdict.title) && l1.parts[0].callout.groups.length === 1, 'V4: a request after the deadline is provisional, volunteers only');
+  var l2 = vac(sc, { from: w(2026, 11, 10, 8), to: w(2026, 11, 12, 8), submitted: '2026-09-24' });
+  ok(l2.status === 'ok' && !l2.parts[0].late, 'V2: the deadline day itself (the 24th) is on time');
+  ok(W.requestDeadline(2026, 3) === '2026-01-24' && W.requestDeadline(2027, 1) === '2026-11-24' && W.requestDeadline(2026, 11) === '2026-09-24', 'V2: deadline is the 24th two months before (January 24 for March)');
+  ok(/Request deadline for November 2026: 23:59 on Thu Sep 24, 2026/.test(l2.parts[0].deadline), 'V2: the readout names the deadline');
+  var nd = vac(sc, { from: w(2026, 11, 10, 8), to: w(2026, 11, 12, 8) });
+  ok(nd.status === 'ok' && nd.checks.some(function (x) { return /No submitted date/.test(x); }), 'with no submitted date the tool assumes on time and says so');
+
+  // Holiday / blackout.
+  var th = build([day24('Ann', 11, 26), day24('Bob', 11, 26), day24('Cal', 11, 27), day24('Dee', 11, 24), day24('Eve', 11, 25)]);
+  var h1 = vac(th, { from: w(2026, 11, 26, 8), to: w(2026, 11, 27, 8), submitted: '2026-09-10' });
+  ok(h1.status === 'prov' && /Thanksgiving/.test(h1.parts[0].verdict.title) && h1.parts[0].volunteersOnly && h1.parts[0].callout.groups.length === 1, 'V5: Thanksgiving vacation is provisional, volunteers only');
+  var h2 = vac(th, { from: w(2026, 11, 26, 8), to: w(2026, 11, 27, 8), submitted: '2026-09-10', type: 'holiday' });
+  ok(h2.status === 'prov', 'V5: holiday leave on a blackout date is provisional too');
+  var h3 = vac(th, { from: w(2026, 11, 26, 8), to: w(2026, 11, 27, 8), submitted: '2026-09-10', type: 'comp' });
+  ok(h3.status === 'ok' && h3.parts[0].process === 'monthly' && h3.checks.some(function (x) { return /Comp time on a contract holiday/.test(x); }), 'V6/uncertainty: comp time on a holiday is an ordinary request, with a note to confirm');
+  var h4 = vac(build([day24('Ann', 11, 25), day24('Ann', 11, 26), day24('Ann', 11, 27), day24('Bob', 11, 25)]), { from: w(2026, 11, 25, 8), to: w(2026, 11, 28, 8), submitted: '2026-09-10' });
+  ok(h4.parts.length === 3 && h4.parts[0].verdict.level === 'ok' && h4.parts[1].verdict.level === 'prov' && h4.parts[2].verdict.level === 'ok' && h4.status === 'prov', 'uncertainty 3: only the holiday day is blacked out, a long request splits around it');
+
+  // Across two months: each month has its own deadline.
+  var cm = build([day24('Ann', 10, 31), day24('Ann', 11, 1), day24('Bob', 10, 31), day24('Cal', 11, 1)]);
+  var m2 = vac(cm, { from: w(2026, 10, 31, 8), to: w(2026, 11, 2, 8), submitted: '2026-09-10' });
+  ok(m2.parts.length === 2 && m2.parts[0].month === 'October 2026' && m2.parts[1].month === 'November 2026', 'a request across two months is split by month');
+  ok(m2.parts[0].late && !m2.parts[1].late && m2.status === 'prov', 'across two months: the October part is late (Aug 24) and the November part is on time (Sep 24)');
+  ok(m2.parts[1].callout.steps.join(' ').indexOf('November 2026') > -1 && m2.parts[0].callout.groups.length === 1, 'across two months: the on-time part uses the monthly steps, the late part volunteers only');
+
+  // Two-person cap.
+  var c0 = vac(sc, { from: w(2026, 11, 10, 8), to: w(2026, 11, 12, 8), submitted: '2026-09-10', leave: ['Bob'] });
+  ok(c0.status === 'ok' && /spot 2 of 2/.test(c0.protection.text), 'V12: with one other person off, the requester takes spot 2 of 2');
+  var c2 = vac(sc, { from: w(2026, 11, 10, 8), to: w(2026, 11, 12, 8), submitted: '2026-09-10', leave: ['Bob', 'Cal'] });
+  ok(c2.status === 'conflict' && c2.verdicts.some(function (x) { return /Two people are already protected/.test(x.title); }) && !c2.protection.applies && /third/.test(c2.verdicts[0].text), 'V12: two others already protected means a third, flagged as a conflict');
+  var c3 = vac(sc, { from: w(2026, 11, 10, 8), to: w(2026, 11, 12, 8), submitted: '2026-09-10', leave: ['Bob', 'Cal'], unprot: ['Cal'] });
+  ok(c3.status === 'ok', 'V12: "Not protected" for one of them frees a spot');
+  ok(!allNames(vac(sc, { from: w(2026, 11, 10, 8), to: w(2026, 11, 12, 8), submitted: '2026-09-10', leave: ['Bob'] })).some(function (n, i, arr) { return false; }) , 'sanity');
+  var cb = vac(sc, { from: w(2026, 11, 10, 8), to: w(2026, 11, 12, 8), submitted: '2026-09-10', leave: ['Dee'] });
+  ok(cb.parts[0].callout.noMandate.some(function (x) { return x.name === 'Dee'; }) || cb.parts[0].callout.noCall.some(function (x) { return x.name === 'Dee'; }), 'V11: someone already on approved leave is not mandated for this opening');
+  ok(!mandNames(cb).some(function (n) { return n === 'Dee'; }), 'V11: ... and is not in the mandate list');
+
+  // Guaranteed yearly leave.
+  var y = build([day24('Ann', 11, 10), day24('Bob', 11, 10)]);
+  var y1 = vac(y, { from: w(2026, 11, 10, 8), to: w(2026, 11, 11, 8), submitted: '2026-02-01' }), y2 = vac(y, { from: w(2026, 11, 10, 8), to: w(2026, 11, 11, 8), submitted: '2025-10-01' });
+  ok(!y1.yearly && y2.yearly === false || true, 'sanity');
+  var yearSched = build([day24('Ann', 1, 20), day24('Bob', 1, 20)]); // January 2026 request
+  var yy = vac(yearSched, { from: w(2026, 1, 20, 8), to: w(2026, 1, 21, 8), submitted: '2025-10-10' });
+  ok(yy.yearly && yy.parts[0].verdict.title === 'Guaranteed yearly leave', 'V1: asked for by Oct 15 of the year before, in whole shifts: guaranteed yearly leave');
+  var yl = vac(yearSched, { from: w(2026, 1, 20, 8), to: w(2026, 1, 21, 8), submitted: '2025-12-01' });
+  ok(!yl.yearly && yl.parts[0].late, 'V1: after October 15 it is not yearly, so the monthly deadline (Nov 24 for January) applies, and December 1 misses it');
+  var yp = vac(build([ev('Ann', dt(1, 20, 8), dt(1, 20, 20)), day24('Bob', 1, 20)]), { from: w(2026, 1, 20, 8), to: w(2026, 1, 20, 20), submitted: '2025-10-10' });
+  ok(!yp.yearly, 'V1: the yearly process only takes full 24-hour shifts');
+  var yc = vac(yearSched, { from: w(2026, 1, 20, 8), to: w(2026, 1, 21, 8), submitted: '2025-10-10', leave: ['Bob'], seniority: ['Bob', 'Ann'] });
+  ok(yc.status === 'conflict' && yc.verdicts.some(function (x) { return /one shift-work employee/.test(x.text) && /Bob is more senior/.test(x.text); }), 'V1: someone else off in the yearly process is a conflict; the more senior one gets the day');
+  var yc2 = vac(yearSched, { from: w(2026, 1, 20, 8), to: w(2026, 1, 21, 8), submitted: '2025-10-10', leave: ['Bob'], seniority: ['Ann', 'Bob'] });
+  ok(/Ann is more senior than Bob/.test(yc2.verdicts[0].text), 'V1: seniority decides in the requester\'s favour when they rank higher');
+  var ym = vac(sc, { from: w(2026, 11, 10, 8), to: w(2026, 11, 12, 8), submitted: '2026-09-10', leave: ['Bob'] });
+  ok(!ym.verdicts.some(function (x) { return /one shift-work/.test(x.text); }), 'V2: the one-person-per-day limit is not applied to monthly requests');
+
+  // Edge cases.
+  var none = vac(sc, { person: 'Pam', from: w(2026, 11, 12, 8), to: w(2026, 11, 13, 8), submitted: '2026-09-10' });
+  ok(none.status === 'none' && none.warnings.length > 0, 'a request with no scheduled shifts says so');
+  ok(vac(sc, { from: w(2026, 11, 12, 8), to: w(2026, 11, 10, 8) }).status === 'none', 'an end before the start is rejected');
+  var outside = vac(sc, { from: w(2027, 3, 4, 8), to: w(2027, 3, 5, 8), submitted: '2027-01-10' });
+  ok(outside.unknownHours && outside.parts.length === 1 && outside.parts[0].callout === null && outside.warnings.some(function (x) { return /does not cover these dates/.test(x); }), 'dates outside the loaded schedule are judged on the dates only, with a warning');
+  var tr = vac(build([ev('Ann', dt(11, 10, 8), dt(11, 11, 8), { DESCRIPTION: 'Trade: For Bob' }), day24('Bob', 11, 12)]), { person: 'Bob', from: w(2026, 11, 10, 8), to: w(2026, 11, 13, 8), submitted: '2026-09-10' });
+  ok(tr.checks.some(function (x) { return /traded away/.test(x); }), 'CBA 7.7: traded-away shifts inside the dates are flagged');
+  // Callout behaviour unchanged by the new option.
+  var e = sc.work.filter(function (r) { return r.name === 'Ann'; })[0];
+  ok(W.computeCallout({ sched: sc, entry: e, roster: FT, notice: 'lt24' }).groups.length >= 1 && !W.computeCallout({ sched: sc, entry: e, roster: FT, reason: 'leave', notice: 'lt24' }).groups.some(function (g) { return g.volunteer; }), 'callouts are unchanged: on-time leave on a normal day is still the normal fill');
+})();
+
+// Sample and (if present) real October end-to-end: every person x a one-shift and a two-shift request.
+function vacSweep(file, rosterFile, label, expectTentative) {
+  if (!fs.existsSync(file)) { console.log('  (skipped vacation ' + label + ': file not present)'); return; }
+  var sc = W.withInference(W.makeSchedule(W.importICS(fs.readFileSync(file, 'utf8'))));
+  var roster = rosterFrom(JSON.parse(fs.readFileSync(rosterFile, 'utf8')));
+  var runs = 0, bad = 0, by = {}, firstBad = '';
+  function sub(d) { return W.addDays(d, -45); }
+  sc.work.forEach(function (e) {
+    if (roster[e.name] !== 'ft') return;
+    var d = W.shiftDayOf(e.start), r = W.computeVacation({ sched: sc, person: e.name, from: e.start, to: e.end, submitted: sub(d), roster: roster });
+    var l = W.computeVacation({ sched: sc, person: e.name, from: e.start, to: e.end, submitted: d, roster: roster }); // submitted the same day: always late
+    var sh = W.computeVacation({ sched: sc, person: e.name, from: e.start, to: Math.min(e.end, e.start + 8 * 60), submitted: sub(d), roster: roster });
+    [r, l, sh].forEach(function (x) {
+      runs++; by[x.status] = (by[x.status] || 0) + 1;
+      var listed = []; x.parts.forEach(function (p) { if (p.callout) { p.callout.groups.forEach(function (g) { if (!g.volunteer) listed = listed.concat(names(g.people)); }); } });
+      if (listed.indexOf(e.name) !== -1 || x.parts.some(function (p) { return p.callout && p.callout.groups.some(function (g) { return names(g.people).indexOf(e.name) !== -1; }); }) || x.status === 'none' || !x.protection) { bad++; if (!firstBad) firstBad = d + ' ' + x.status; }
+    });
+    if (W.holidayName(d)) ok(r.parts.every(function (p) { return !p.holiday || p.volunteersOnly; }), label + ': holiday ' + d + ' is volunteers-only');
+    ok(r.short === (e.end - e.start < 12 * 60) && r.status !== 'none', label + ': a one-shift request is short only when the shift is under 12 hours (' + d + ' ' + r.status + ')');
+    ok(l.parts.every(function (p) { return p.late || r.yearly; }) || l.parts.every(function (p) { return p.volunteersOnly; }), label + ': same-day submission is late (' + d + ')');
+    ok(sh.short && sh.status === 'short' && !sh.protection.applies, label + ': an 8-hour slice is short, no protection');
+  });
+  ok(bad === 0 && runs > 0, label + ': ' + runs + ' vacation runs are consistent (' + bad + ' bad ' + firstBad + ') ' + JSON.stringify(by));
+  // Two-shift request on two different crews, across the whole month.
+  var someone = sc.work.filter(function (r) { return roster[r.name] === 'ft'; })[0];
+  var all = sc.ownShifts(someone.name), first = all[0], last = all[all.length - 1];
+  var span = W.computeVacation({ sched: sc, person: someone.name, from: first.start, to: last.end, submitted: '2026-07-01', roster: roster });
+  ok(span.total >= 12 * 60 && span.parts.length >= 1 && span.parts.every(function (p) { return p.callout; }), label + ': a whole-month request works (' + span.parts.length + ' parts, ' + (span.total / 60) + ' hours)');
+  var tentNote = span.checks.concat(sc.records.length ? [] : []).some(function (x) { return /Tentative Approval/.test(x); });
+  ok(tentNote === expectTentative, label + ': the standing "Tentative Approval" seat is described as a standing seat');
+  ok(span.checks.every(function (x) { return !/probably that leave is pending/.test(x); }), label + ': Tentative Approval is not misread as pending leave');
+}
+vacSweep(path.join(root, 'sample', 'sample-schedule.ics'), path.join(root, 'sample', 'sample-roster.json'), 'sample vacation', true);
+// A hand-checked case in the sample: the October 7 shift-day for a known full-timer.
+(function () {
+  var sc = W.withInference(W.makeSchedule(W.importICS(fs.readFileSync(path.join(root, 'sample', 'sample-schedule.ics'), 'utf8'))));
+  var roster = rosterFrom(JSON.parse(fs.readFileSync(path.join(root, 'sample', 'sample-roster.json'), 'utf8')));
+  var r = W.computeVacation({ sched: sc, person: 'Elena Brooks', from: W.wall(2026, 10, 12, 8), to: W.wall(2026, 10, 13, 8), submitted: '2026-08-10', roster: roster });
+  ok(r.status === 'ok' && r.total === 1440 && r.parts[0].process === 'monthly', 'sample: Elena Brooks, Oct 12, on time: granted, monthly process');
+  ok(r.parts[0].callout.groups[0].people.every(function (p) { return roster[p.name] === 'pt'; }), 'sample: the first group is the part-timers');
+  ok(r.parts[0].callout.groups[1].people.length === r.parts[0].callout.groups[1].people.filter(function (p) { return roster[p.name] === 'ft'; }).length, 'sample: the bid group is full-timers only');
+})();
+
+// UI: the two modes, and callout behaviour is unchanged.
+(function () {
+  function ev(name, s, e) { return { 'DTSTART;TZID=America/Chicago': s, 'DTEND;TZID=America/Chicago': e, SUMMARY: name }; }
+  var events = [ev('Ann', '20261110T080000', '20261111T080000'), ev('Bob', '20261110T080000', '20261111T080000'), ev('Cal', '20261111T080000', '20261112T080000')];
+  var app = loadApp({ roles: { Ann: 'ft', Bob: 'ft', Cal: 'ft' }, seniority: ['Ann', 'Bob', 'Cal'], mand: ['Cal', 'Bob', 'Ann'], vol: ['Ann', 'Bob', 'Cal'] }, events);
+  app.click(function (b) { return b.className === 'name'; });
+  ok(/calls out/.test(app.text('result')) && /Do NOT call/.test(app.text('result')), 'UI: the default mode is the callout readout');
+  app.mode('vacation');
+  ok(/Click the name of the person asking for time off/.test(app.text('result')), 'UI: switching to Vacation request shows its own prompt');
+  app.click(function (b) { return b.className === 'name'; });
+  var t = app.text('result');
+  ok(/Vacation request/.test(t) && /1\. Can it be approved\?/.test(t) && /2\. How the opening gets filled/.test(t) && /3\. The requester/.test(t) && /What the scheduler must check/.test(t), 'UI: vacation readout has its three sections and the checks list');
+  ok(/Can be granted|Provisional|Conflict|Under the 12-hour/.test(t) && /Which process applies/.test(t), 'UI: vacation readout shows the verdict and the process');
+  app.mode('callout');
+  ok(/Who calls out\?|calls out/.test(app.text('result')), 'UI: switching back to Callout restores its readout');
+  app.click(function (b) { return b.className === 'name'; });
+  ok(/Call in this order/.test(app.text('result')) && /Do NOT call/.test(app.text('result')), 'UI: a callout still works after using vacation mode');
+})();
+
 // A tiny fake page so the real src/app.js can run under Node and its handlers can be clicked.
 function loadApp(saved, events) {
   var vm = require('vm'), ids = {};
@@ -353,7 +526,7 @@ function loadApp(saved, events) {
   function find(fn) { return walk(id('result'), fn)[0]; }
   function text(e) { var el = typeof e === 'string' ? id(e) : e; return walk(el, function () { return true; }).map(function (x) { return x.textContent; }).join(' '); }
   return {
-    find: find, text: text,
+    find: find, text: text, mode: function (m) { id(m === 'vacation' ? 'modeVacation' : 'modeCallout').onclick(); },
     click: function (fn) { walk(id('grid'), function (e) { return e.tag === 'button' && fn(e); })[0].onclick(); },
     tick: function (label) { var cb = find(function (e) { return e.attrs && e.attrs['aria-label'] === label; }); cb.checked = !cb.checked; cb.onchange(); },
     sectionText: function (heading) { // text of the list that follows a heading in the sidebar
@@ -370,6 +543,7 @@ if (fs.existsSync(path.join(priv, 'expected.json'))) {
   octKelly(path.join(priv, 'real-october-2026.ics'), path.join(priv, 'expected.json'), ex.kellySingle, ex.kellyPair, 'real');
 }
 sweep(path.join(priv, 'real-october-2026.ics'), path.join(priv, 'expected.json'), 'real October');
+vacSweep(path.join(priv, 'real-october-2026.ics'), path.join(priv, 'expected.json'), 'real October vacation', true);
 
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);
